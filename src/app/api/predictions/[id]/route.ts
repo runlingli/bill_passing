@@ -51,7 +51,7 @@ const mockPredictions: Record<string, PropositionPrediction> = {
 };
 
 interface RouteContext {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export async function GET(
@@ -59,7 +59,7 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const { id } = await context.params;
+    const { id } = context.params;
     const prediction = mockPredictions[id];
 
     if (!prediction) {

@@ -1,6 +1,5 @@
 'use client';
 
-import { use } from 'react';
 import Link from 'next/link';
 import { PredictionDisplay, FinanceChart, ScenarioBuilder, ScenarioResultsDisplay } from '@/components/features';
 import {
@@ -194,11 +193,11 @@ const getMockProposition = (id: string): PropositionWithDetails => ({
 });
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default function PropositionDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+  const { id } = params;
   const proposition = getMockProposition(id);
   const [scenarioResults, setScenarioResults] = useState<Scenario | null>(null);
 
