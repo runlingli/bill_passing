@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ScenarioBuilder, ScenarioResultsDisplay } from '@/components/features';
 import {
@@ -16,51 +16,67 @@ import {
   SelectItem,
   Button,
 } from '@/components/ui';
-import { Zap, ArrowRight, TrendingUp, Clock, Trash2 } from 'lucide-react';
-import { Scenario, PropositionWithDetails, SCENARIO_PRESETS } from '@/types';
-
-// Mock proposition for scenario builder
-const mockProposition: PropositionWithDetails = {
-  id: 'prop-50',
-  number: '50',
-  year: 2024,
-  electionDate: '2024-11-05',
-  title: 'Local Government Funding Amendment',
-  summary: 'Reduces the voter approval threshold for local bonds from two-thirds to 55%.',
-  status: 'upcoming',
-  category: 'government',
-  sponsors: ['CA League of Cities'],
-  opponents: ['Howard Jarvis Taxpayers Association'],
-  finance: {
-    propositionId: 'prop-50',
-    totalSupport: 15_234_567,
-    totalOpposition: 8_765_432,
-    supportCommittees: [],
-    oppositionCommittees: [],
-    topDonors: [],
-    lastUpdated: new Date().toISOString(),
-  },
-  prediction: {
-    propositionId: 'prop-50',
-    passageProbability: 0.38,
-    confidence: 0.72,
-    factors: [],
-    historicalComparison: [],
-    generatedAt: new Date().toISOString(),
-  },
-};
-
-const mockPropositions = [
-  { id: 'prop-50', number: '50', title: 'Local Government Funding Amendment' },
-  { id: 'prop-1', number: '1', title: 'Affordable Housing Bond Act' },
-  { id: 'prop-2', number: '2', title: 'Education Funding Reform' },
-  { id: 'prop-3', number: '3', title: 'Climate Resilience Bond' },
-];
+import { Zap, ArrowRight, TrendingUp, Clock, Trash2, Loader2 } from 'lucide-react';
+import { Scenario, Proposition, PropositionWithDetails, SCENARIO_PRESETS, ApiResponse } from '@/types';
 
 export default function ScenariosPage() {
-  const [selectedProposition, setSelectedProposition] = useState<string>('prop-50');
+  const [propositions, setPropositions] = useState<Proposition[]>([]);
+  const [selectedProposition, setSelectedProposition] = useState<string>('');
+  const [currentProposition, setCurrentProposition] = useState<PropositionWithDetails | null>(null);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch propositions from API
+  useEffect(() => {
+    const fetchPropositions = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/propositions?year=2024');
+        const data: ApiResponse<Proposition[]> = await response.json();
+
+        if (data.success && data.data.length > 0) {
+          setPropositions(data.data);
+          setSelectedProposition(data.data[0].id);
+        } else {
+          setError('No propositions available');
+        }
+      } catch {
+        setError('Failed to fetch propositions');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPropositions();
+  }, []);
+
+  // Fetch proposition details when selection changes
+  useEffect(() => {
+    if (!selectedProposition) return;
+
+    const fetchPropositionDetails = async () => {
+      setIsLoadingDetails(true);
+      try {
+        const response = await fetch(`/api/propositions/${selectedProposition}`);
+        const data: ApiResponse<PropositionWithDetails> = await response.json();
+
+        if (data.success) {
+          setCurrentProposition(data.data);
+        } else {
+          setError('Failed to load proposition details');
+        }
+      } catch {
+        setError('Failed to load proposition details');
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    };
+
+    fetchPropositionDetails();
+  }, [selectedProposition]);
 
   const handleScenarioRun = (scenario: Scenario) => {
     setScenarios((prev) => {
@@ -98,44 +114,79 @@ export default function ScenariosPage() {
         </div>
       </div>
 
-      {/* Proposition Selector */}
-      <Card className="mb-8">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select a Proposition to Analyze
-              </label>
-              <Select value={selectedProposition} onValueChange={setSelectedProposition}>
-                <SelectTrigger className="w-full md:w-96">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockPropositions.map((prop) => (
-                    <SelectItem key={prop.id} value={prop.id}>
-                      Prop {prop.number}: {prop.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Link href={`/propositions/${selectedProposition}`}>
-              <Button variant="outline">
-                View Proposition Details
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <span className="ml-2 text-gray-600">Loading propositions...</span>
+        </div>
+      )}
 
+      {/* Error State */}
+      {error && !isLoading && (
+        <Card className="mb-8 border-red-200 bg-red-50">
+          <CardContent className="py-4 text-center text-red-600">
+            {error}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Proposition Selector */}
+      {!isLoading && propositions.length > 0 && (
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select a Proposition to Analyze
+                </label>
+                <Select value={selectedProposition} onValueChange={setSelectedProposition}>
+                  <SelectTrigger className="w-full md:w-96">
+                    <SelectValue placeholder="Select a proposition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {propositions.map((prop) => (
+                      <SelectItem key={prop.id} value={prop.id}>
+                        Prop {prop.number}: {prop.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Link href={`/propositions/${selectedProposition}`}>
+                <Button variant="outline" disabled={!selectedProposition}>
+                  View Proposition Details
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && propositions.length > 0 && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scenario Builder */}
         <div className="lg:col-span-2">
-          <ScenarioBuilder
-            proposition={mockProposition}
-            onScenarioRun={handleScenarioRun}
-          />
+          {isLoadingDetails ? (
+            <Card>
+              <CardContent className="py-12 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+                <span className="ml-2 text-gray-600">Loading proposition details...</span>
+              </CardContent>
+            </Card>
+          ) : currentProposition ? (
+            <ScenarioBuilder
+              proposition={currentProposition}
+              onScenarioRun={handleScenarioRun}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-gray-500">
+                Select a proposition to start building scenarios
+              </CardContent>
+            </Card>
+          )}
 
           {activeScenario?.results && (
             <div className="mt-6">
@@ -258,6 +309,7 @@ export default function ScenariosPage() {
           </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }

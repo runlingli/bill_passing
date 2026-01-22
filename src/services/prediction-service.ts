@@ -31,12 +31,12 @@ interface FactorWeights {
 }
 
 const DEFAULT_WEIGHTS: FactorWeights = {
-  campaignFinance: 0.25,
-  historicalSimilarity: 0.20,
-  demographics: 0.20,
-  ballotWording: 0.15,
-  timing: 0.10,
-  opposition: 0.10,
+  campaignFinance: 0.30,    // Money is very influential
+  historicalSimilarity: 0.10, // Less weight - we don't have good data for this
+  demographics: 0.15,        // Demographics matter but hard to change
+  ballotWording: 0.20,       // Framing has significant impact
+  timing: 0.15,              // Turnout/timing matters
+  opposition: 0.10,          // Opposition organization
 };
 
 class PredictionService {
@@ -107,19 +107,28 @@ class PredictionService {
     }
 
     const supportRatio = finance.totalSupport / total;
-    const spendingAdvantage = supportRatio - 0.5;
+    const spendingAdvantage = supportRatio - 0.5; // -0.5 to +0.5
 
-    let value = 0.5 + spendingAdvantage * 0.6;
+    // More aggressive scaling - money has big impact
+    // A 2:1 spending advantage (67% vs 33%) = +0.17 advantage = ~0.67 probability
+    // A 4:1 spending advantage (80% vs 20%) = +0.30 advantage = ~0.80 probability
+    let value = 0.5 + spendingAdvantage * 0.8;
     value = clamp(value, 0.2, 0.8);
 
-    const impact = spendingAdvantage > 0.1 ? 'positive' : spendingAdvantage < -0.1 ? 'negative' : 'neutral';
+    const impact = spendingAdvantage > 0.08 ? 'positive' : spendingAdvantage < -0.08 ? 'negative' : 'neutral';
+
+    const formatMoney = (n: number) => {
+      if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+      return `$${n}`;
+    };
 
     return {
       name: 'campaignFinance',
       weight: this.weights.campaignFinance,
       value,
       impact,
-      description: `Support spending ${supportRatio > 0.5 ? 'outpaces' : 'trails'} opposition by ${Math.abs(spendingAdvantage * 100).toFixed(1)}%`,
+      description: `Support ${formatMoney(finance.totalSupport)} vs Opposition ${formatMoney(finance.totalOpposition)} (${(supportRatio * 100).toFixed(0)}% support share)`,
     };
   }
 
@@ -171,30 +180,40 @@ class PredictionService {
     }
 
     let value = 0.5;
-    value += analysis.sentimentScore * 0.15;
-    value += (analysis.readabilityScore / 100 - 0.5) * 0.1;
 
+    // Sentiment has significant impact (-1 to +1 scale)
+    // Positive framing can swing votes by up to 20%
+    value += analysis.sentimentScore * 0.20;
+
+    // Readability affects understanding (0-100 scale)
+    // Higher readability = more people understand = generally helps passage
+    value += (analysis.readabilityScore / 100 - 0.5) * 0.15;
+
+    // Complexity affects voter decision
     if (analysis.complexity === 'simple') {
-      value += 0.05;
+      value += 0.08; // Simple language helps
     } else if (analysis.complexity === 'complex') {
-      value -= 0.05;
+      value -= 0.08; // Complex language hurts (voters vote no when confused)
     }
 
-    value = clamp(value, 0.3, 0.7);
+    value = clamp(value, 0.25, 0.75);
 
     const impact =
-      analysis.sentimentScore > 0.2
+      analysis.sentimentScore > 0.15
         ? 'positive'
-        : analysis.sentimentScore < -0.2
+        : analysis.sentimentScore < -0.15
           ? 'negative'
           : 'neutral';
+
+    const sentimentDesc = analysis.sentimentScore > 0.1 ? 'positive' :
+                          analysis.sentimentScore < -0.1 ? 'negative' : 'neutral';
 
     return {
       name: 'ballotWording',
       weight: this.weights.ballotWording,
       value,
       impact,
-      description: `Ballot language is ${analysis.complexity} with ${analysis.sentimentScore > 0 ? 'positive' : 'neutral'} framing`,
+      description: `${analysis.complexity} language with ${sentimentDesc} framing (readability: ${analysis.readabilityScore.toFixed(0)})`,
     };
   }
 
@@ -204,8 +223,12 @@ class PredictionService {
     const isPresidentialYear = electionDate.getFullYear() % 4 === 0;
     const isNovember = month === 10;
 
+    // Check for turnout multiplier from scenario
+    const turnoutMultiplier = (proposition as PropositionWithDetails & { turnoutMultiplier?: number }).turnoutMultiplier || 1.0;
+
     let value = 0.5;
 
+    // Base timing effects
     if (isNovember && isPresidentialYear) {
       value += 0.1;
     } else if (isNovember) {
@@ -214,14 +237,31 @@ class PredictionService {
       value -= 0.05;
     }
 
+    // High turnout generally helps progressive measures, low turnout helps conservative measures
+    // This is a simplified model - in reality it depends on the proposition type
+    if (turnoutMultiplier > 1.0) {
+      // Higher turnout - slight boost for most measures
+      value += (turnoutMultiplier - 1.0) * 0.15;
+    } else if (turnoutMultiplier < 1.0) {
+      // Lower turnout - slight decrease
+      value -= (1.0 - turnoutMultiplier) * 0.1;
+    }
+
+    value = clamp(value, 0.3, 0.7);
+
     const impact = value > 0.55 ? 'positive' : value < 0.45 ? 'negative' : 'neutral';
+
+    let description = `${isNovember ? 'November' : 'Off-cycle'} election ${isPresidentialYear ? 'in presidential year' : ''}`;
+    if (turnoutMultiplier !== 1.0) {
+      description += ` with ${turnoutMultiplier > 1 ? 'high' : 'low'} turnout (${(turnoutMultiplier * 100).toFixed(0)}%)`;
+    }
 
     return {
       name: 'timing',
       weight: this.weights.timing,
       value,
       impact,
-      description: `${isNovember ? 'November' : 'Off-cycle'} election ${isPresidentialYear ? 'in presidential year' : ''}`,
+      description,
     };
   }
 
@@ -257,21 +297,40 @@ class PredictionService {
   }
 
   private calculateConfidence(factors: PredictionFactor[], proposition: PropositionWithDetails): number {
-    let confidence = 0.5;
+    let confidence = 0.4; // Start lower
 
-    const availableData = factors.filter((f) => f.description !== 'unavailable').length;
-    confidence += availableData * 0.08;
+    // Check for factors with actual data (not "unavailable" in description)
+    const availableFactors = factors.filter((f) => !f.description.toLowerCase().includes('unavailable'));
+    confidence += availableFactors.length * 0.05; // 5% per available factor
 
+    // Bonus for having finance data with significant spending
     if (proposition.finance) {
       const totalSpending = proposition.finance.totalSupport + proposition.finance.totalOpposition;
-      if (totalSpending > 10_000_000) {
-        confidence += 0.1;
+      if (totalSpending > 50_000_000) {
+        confidence += 0.15;
+      } else if (totalSpending > 10_000_000) {
+        confidence += 0.10;
       } else if (totalSpending > 1_000_000) {
         confidence += 0.05;
       }
     }
 
-    return clamp(confidence, 0.3, 0.9);
+    // Bonus for having demographic data
+    if (proposition.demographics) {
+      confidence += 0.05;
+    }
+
+    // Bonus for having ballot analysis
+    if (proposition.ballotAnalysis) {
+      confidence += 0.05;
+    }
+
+    // Historical propositions with results have higher confidence
+    if (proposition.result) {
+      confidence += 0.1;
+    }
+
+    return clamp(confidence, 0.3, 0.85);
   }
 
   private async findSimilarPropositions(
@@ -316,11 +375,51 @@ class PredictionService {
   ): PropositionWithDetails {
     const modified = { ...proposition };
 
+    // Apply funding changes
     if (scenario.parameters.funding && modified.finance) {
       modified.finance = {
         ...modified.finance,
         totalSupport: modified.finance.totalSupport * scenario.parameters.funding.supportMultiplier,
         totalOpposition: modified.finance.totalOpposition * scenario.parameters.funding.oppositionMultiplier,
+      };
+    }
+
+    // Apply turnout changes - affects demographic projections
+    if (scenario.parameters.turnout && scenario.parameters.turnout.overallMultiplier !== 1.0) {
+      // Store turnout multiplier for use in factor calculation
+      (modified as PropositionWithDetails & { turnoutMultiplier?: number }).turnoutMultiplier =
+        scenario.parameters.turnout.overallMultiplier;
+    }
+
+    // Apply framing changes - affects ballot wording analysis
+    if (scenario.parameters.framing) {
+      const currentAnalysis = modified.ballotAnalysis || {
+        propositionId: modified.id,
+        readabilityScore: 50,
+        sentimentScore: 0,
+        complexity: 'moderate' as const,
+        keyPhrases: [],
+        biasIndicators: [],
+      };
+
+      let newSentiment = currentAnalysis.sentimentScore + scenario.parameters.framing.titleSentiment;
+      let newReadability = currentAnalysis.readabilityScore;
+      let newComplexity = currentAnalysis.complexity;
+
+      // Apply complexity changes
+      if (scenario.parameters.framing.summaryComplexity === 'simpler') {
+        newReadability = Math.min(100, currentAnalysis.readabilityScore + 20);
+        newComplexity = 'simple';
+      } else if (scenario.parameters.framing.summaryComplexity === 'complex') {
+        newReadability = Math.max(0, currentAnalysis.readabilityScore - 20);
+        newComplexity = 'complex';
+      }
+
+      modified.ballotAnalysis = {
+        ...currentAnalysis,
+        sentimentScore: clamp(newSentiment, -1, 1),
+        readabilityScore: newReadability,
+        complexity: newComplexity,
       };
     }
 

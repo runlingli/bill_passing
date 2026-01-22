@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { propositionService } from '@/services';
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const revalidate = 3600; // Revalidate every hour (finance data doesn't change frequently)
 
 interface RouteContext {
   params: { id: string };
@@ -14,7 +14,7 @@ export async function GET(
   try {
     const { id } = context.params;
 
-    const response = await propositionService.getById(id);
+    const response = await propositionService.getFinance(id);
 
     if (!response.success) {
       const status = response.error?.code === 'NOT_FOUND' ? 404 : 500;
@@ -30,7 +30,7 @@ export async function GET(
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: 'Failed to fetch proposition',
+          message: 'Failed to fetch finance data',
         },
       },
       { status: 500 }

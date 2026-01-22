@@ -70,8 +70,14 @@ export function ScenarioBuilder({
         parameters,
         scenarioName || undefined
       );
-      await scenarioService.run(scenario, proposition);
-      onScenarioRun(scenario);
+      const results = await scenarioService.run(scenario, proposition);
+      // Attach results to scenario before passing to callback
+      const scenarioWithResults = {
+        ...scenario,
+        results,
+        updatedAt: new Date().toISOString(),
+      };
+      onScenarioRun(scenarioWithResults);
     } finally {
       setIsRunning(false);
     }
