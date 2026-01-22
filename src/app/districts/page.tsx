@@ -19,8 +19,8 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui';
-import { Map, Info, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { PropositionImpact, DistrictImpactDetail, CaliforniaRegion, CALIFORNIA_REGIONS } from '@/types';
+import { Map, Info } from 'lucide-react';
+import { PropositionImpact, CaliforniaRegion, CALIFORNIA_REGIONS } from '@/types';
 
 // Mock data for district impact
 const mockImpact: PropositionImpact = {

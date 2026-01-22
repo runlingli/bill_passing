@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import { Scenario, ScenarioParameters, ScenarioResults } from '@/types';
+import { Scenario, ScenarioResults } from '@/types';
 
 interface ScenarioState {
   scenarios: Scenario[];

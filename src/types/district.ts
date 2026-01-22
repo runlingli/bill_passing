@@ -140,7 +140,10 @@ export interface DistrictComparison {
 
 export interface DistrictMapData {
   districtId: string;
-  coordinates: GeoJSON.Geometry;
+  coordinates: {
+    type: string;
+    coordinates: number[] | number[][] | number[][][];
+  };
   metrics: {
     partisanBalance: number;
     turnout: number;

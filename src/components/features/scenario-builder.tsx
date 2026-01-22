@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import {
   Scenario,
   ScenarioParameters,
-  ScenarioPreset,
   SCENARIO_PRESETS,
   PropositionWithDetails,
 } from '@/types';

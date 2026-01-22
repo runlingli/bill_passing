@@ -8,7 +8,6 @@ import {
   CardTitle,
   CardContent,
   Badge,
-  Button,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -27,9 +26,6 @@ import {
 } from 'lucide-react';
 import {
   PropositionWithDetails,
-  PropositionPrediction,
-  PropositionFinance,
-  PredictionFactor,
   Scenario,
 } from '@/types';
 import { useState } from 'react';

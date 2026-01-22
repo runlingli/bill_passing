@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { PropositionCard } from '@/components/features';
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   Input,
   Select,

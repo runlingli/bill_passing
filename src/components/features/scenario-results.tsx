@@ -1,7 +1,7 @@
 'use client';
 
-import { Scenario, ScenarioResults } from '@/types';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Progress } from '@/components/ui';
+import { Scenario } from '@/types';
+import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
 import { formatPercentage, getProbabilityColor } from '@/lib/utils';
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 

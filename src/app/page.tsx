@@ -1,14 +1,11 @@
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import {
   BarChart3,
-  TrendingUp,
   DollarSign,
-  Users,
   Map,
   Zap,
   ArrowRight,
-  FileText,
   ExternalLink,
 } from 'lucide-react';
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Proposition, PropositionPrediction } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Progress } from '@/components/ui';
 import { formatDate, formatPercentage, getProbabilityColor } from '@/lib/utils';
-import { Calendar, Users, DollarSign } from 'lucide-react';
+import { Calendar, Users } from 'lucide-react';
 
 interface PropositionCardProps {
   proposition: Proposition;

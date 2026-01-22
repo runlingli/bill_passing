@@ -14,7 +14,6 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-  Badge,
   Button,
 } from '@/components/ui';
 import { Zap, ArrowRight, TrendingUp, Clock, Trash2 } from 'lucide-react';

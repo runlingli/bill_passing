@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  CardDescription,
   Badge,
   Button,
   Progress,
@@ -19,7 +18,7 @@ import {
   SelectItem,
 } from '@/components/ui';
 import { formatPercentage, getProbabilityColor } from '@/lib/utils';
-import { BarChart3, TrendingUp, TrendingDown, ArrowRight, Info, Filter } from 'lucide-react';
+import { BarChart3, ArrowRight, Info, Filter } from 'lucide-react';
 import { PropositionPrediction } from '@/types';
 
 // Mock predictions data

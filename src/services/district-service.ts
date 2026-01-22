@@ -76,7 +76,7 @@ class DistrictService {
 
   private async calculateDistrictImpact(
     district: District,
-    propositionId: string
+    _propositionId: string
   ): Promise<DistrictImpactDetail> {
     const currentPartisan = this.calculatePartisanMetrics(district);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { PropositionFinance } from '@/types';
-import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { DollarSign, TrendingUp, Users } from 'lucide-react';
 import {
