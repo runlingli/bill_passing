@@ -9,7 +9,7 @@
  * - https://v3.openstates.org/
  */
 
-import { Proposition, PropositionCategory } from '@/types';
+import { Proposition, PropositionCategory, PropositionStatus } from '@/types';
 
 // California Secretary of State Quick Guide to Props
 const CA_SOS_QUICK_GUIDE = 'https://quickguidetoprops.sos.ca.gov/propositions';
@@ -50,6 +50,75 @@ const CA_ELECTION_DATES: Record<number, string[]> = {
   2020: ['2020-11-03', '2020-03-03'],
   2018: ['2018-11-06', '2018-06-05'],
   2016: ['2016-11-08'],
+};
+
+// Historical proposition results (passed = true, failed = false)
+// Source: https://ballotpedia.org/List_of_California_ballot_propositions
+const HISTORICAL_RESULTS: Record<string, boolean> = {
+  // 2024 propositions
+  '2024-2': true,   // Borrowing for public school and college facilities
+  '2024-3': true,   // Constitutional right to marriage
+  '2024-4': true,   // Bonds for safe drinking water, wildfire prevention
+  '2024-5': false,  // Lower supermajority vote requirement for housing bonds
+  '2024-6': true,   // Eliminates involuntary servitude for incarcerated persons
+  '2024-32': false, // Raises minimum wage to $18
+  '2024-33': false, // Expands local rent control
+  '2024-34': true,  // Restricts health care spending by certain providers
+  '2024-35': true,  // Permanent tax on managed health care plans
+  '2024-36': true,  // Allows felony charges for drug/theft crimes
+  // 2022 propositions
+  '2022-1': true,   // Constitutional right to reproductive freedom
+  '2022-26': false, // Allows sports betting on tribal lands
+  '2022-27': false, // Allows online sports betting
+  '2022-28': true,  // Arts and music education funding
+  '2022-29': false, // Dialysis clinic requirements
+  '2022-30': false, // Tax on income over $2M for EVs and wildfire prevention
+  '2022-31': false, // Referendum on flavored tobacco ban
+  // 2020 propositions
+  '2020-14': true,  // Stem cell research bonds
+  '2020-15': false, // Commercial property tax increase
+  '2020-16': false, // Repeal Prop 209 (affirmative action)
+  '2020-17': true,  // Voting rights for parolees
+  '2020-18': false, // Primary voting age to 17
+  '2020-19': true,  // Property tax transfers for seniors/disabled
+  '2020-20': false, // Criminal sentencing changes
+  '2020-21': false, // Rent control expansion
+  '2020-22': true,  // App-based drivers as contractors
+  '2020-23': false, // Dialysis clinic requirements
+  '2020-24': true,  // Consumer privacy rights
+  '2020-25': false, // Cash bail elimination
+  // 2025 proposition
+  '2025-50': true,  // Redistricting map amendment
+  // 2018 propositions
+  '2018-1': true,   // Housing programs and veterans' loans bond
+  '2018-2': true,   // Mental health services funding
+  '2018-3': true,   // Water infrastructure bond
+  '2018-4': true,   // Children's hospital bond
+  '2018-5': false,  // Property tax transfer for seniors
+  '2018-6': false,  // Repeal gas tax increase
+  '2018-7': true,   // Daylight saving time
+  '2018-8': false,  // Dialysis clinic regulation
+  '2018-10': false, // Rent control expansion
+  '2018-11': true,  // Ambulance workers break time
+  '2018-12': true,  // Farm animal confinement standards
+  // 2016 propositions
+  '2016-51': true,  // School bonds
+  '2016-52': true,  // Medi-Cal hospital fee
+  '2016-53': false, // Revenue bonds voter approval
+  '2016-54': true,  // Legislature bills online
+  '2016-55': true,  // Tax extension for education
+  '2016-56': true,  // Cigarette tax increase
+  '2016-57': true,  // Criminal sentences and parole
+  '2016-58': true,  // Bilingual education
+  '2016-59': false, // Corporate political spending advisory
+  '2016-60': false, // Adult film condoms
+  '2016-61': false, // State prescription drug purchases
+  '2016-62': false, // Repeal death penalty
+  '2016-63': true,  // Ammunition sales background checks
+  '2016-64': true,  // Marijuana legalization
+  '2016-65': false, // Carryout bags charges
+  '2016-66': true,  // Death penalty procedures
+  '2016-67': true,  // Plastic bag ban referendum
 };
 
 // Real proposition data from CA Secretary of State and Ballotpedia
@@ -132,6 +201,27 @@ class CASosClient {
 
   constructor() {
     this.openStatesApiKey = process.env.OPEN_STATES_API_KEY;
+  }
+
+  /**
+   * Determine the correct status for a proposition based on election date and known results
+   */
+  private determineStatus(year: number, number: string, electionDate: string): PropositionStatus {
+    const isPast = new Date(electionDate) < new Date();
+
+    if (!isPast) {
+      return 'upcoming';
+    }
+
+    // Look up historical result
+    const key = `${year}-${number}`;
+    if (key in HISTORICAL_RESULTS) {
+      return HISTORICAL_RESULTS[key] ? 'passed' : 'failed';
+    }
+
+    // Default to 'passed' for unknown past propositions (most pass historically)
+    // This is a fallback - ideally we'd have all results in HISTORICAL_RESULTS
+    return 'passed';
   }
 
   /**
@@ -239,7 +329,7 @@ class CASosClient {
         electionDate,
         title,
         summary: title,
-        status: new Date(electionDate) < new Date() ? 'passed' : 'upcoming',
+        status: this.determineStatus(year, number, electionDate),
         category: this.inferCategory(title),
       };
 
@@ -411,7 +501,7 @@ class CASosClient {
       title: bill.title,
       summary: bill.abstract || bill.title,
       fullText: undefined,
-      status: new Date(electionDate) < new Date() ? 'passed' : 'upcoming',
+      status: this.determineStatus(year, number, electionDate),
       category: this.inferCategoryFromSubjects(bill.subject) || this.inferCategory(bill.title),
     };
 

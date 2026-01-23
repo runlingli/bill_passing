@@ -30,7 +30,7 @@ const categories: { value: PropositionCategory | 'all'; label: string }[] = [
   { value: 'civil_rights', label: 'Civil Rights' },
 ];
 
-const years = ['all', '2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
+const years = ['all', '2026', '2025', '2024', '2022', '2020', '2018', '2016'];
 
 export default function PropositionsPage() {
   const [propositions, setPropositions] = useState<Proposition[]>([]);
