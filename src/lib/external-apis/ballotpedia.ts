@@ -230,7 +230,7 @@ class BallotpediaClient {
   /**
    * Get polling data for a measure
    */
-  async getPolling(year: number, number: string): Promise<PollData[]> {
+  async getPolling(_year: number, _number: string): Promise<PollData[]> {
     // Ballotpedia aggregates polling data
     // Would need to scrape their polling sections
     // For now, return empty array
@@ -240,7 +240,7 @@ class BallotpediaClient {
   /**
    * Get endorsements for a measure
    */
-  async getEndorsements(year: number, number: string): Promise<Endorsement[]> {
+  async getEndorsements(_year: number, _number: string): Promise<Endorsement[]> {
     // Would scrape endorsement sections from Ballotpedia
     return [];
   }

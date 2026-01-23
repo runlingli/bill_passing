@@ -73,10 +73,12 @@ export function PropositionCard({
               <Calendar className="h-4 w-4" />
               <span>{formatDate(proposition.electionDate, { month: 'short', year: 'numeric' })}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              <span>{proposition.sponsors.length} sponsors</span>
-            </div>
+            {proposition.sponsors && proposition.sponsors.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>{proposition.sponsors.length} sponsors</span>
+              </div>
+            )}
           </div>
 
           {showPrediction && prediction && (

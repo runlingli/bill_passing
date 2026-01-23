@@ -89,27 +89,15 @@ class PropositionService {
         };
       }
 
-      // Fetch additional data in parallel
+      // Fetch additional data in parallel from APIs
       const [finance, ballotAnalysis] = await Promise.all([
         this.getFinanceData(number, year),
         this.getBallotAnalysis(proposition),
       ]);
 
-      // Provide default finance data if not available from API
-      // This allows scenario simulations to work with funding multipliers
-      const defaultFinance: PropositionFinance = {
-        propositionId: proposition.id,
-        totalSupport: 5_000_000, // Default $5M support
-        totalOpposition: 3_000_000, // Default $3M opposition
-        supportCommittees: [],
-        oppositionCommittees: [],
-        topDonors: [],
-        lastUpdated: new Date().toISOString(),
-      };
-
       const withDetails: PropositionWithDetails = {
         ...proposition,
-        finance: finance || defaultFinance,
+        finance: finance || undefined,
         ballotAnalysis: ballotAnalysis || undefined,
       };
 
@@ -260,7 +248,7 @@ class PropositionService {
   /**
    * Get available years
    */
-  getAvailableYears(): number[] {
+  async getAvailableYears(): Promise<number[]> {
     return caSosClient.getAvailableYears();
   }
 

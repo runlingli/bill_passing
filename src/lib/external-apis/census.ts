@@ -117,22 +117,42 @@ class CensusClient {
       `for=county:*&in=state:${CA_STATE_FIPS}`
     );
 
+    console.log(`[Census] Fetching CA counties from: ${url.substring(0, 100)}...`);
+    console.log(`[Census] API Key present: ${!!this.apiKey}`);
+
     try {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 86400 }, // Cache for 24 hours
       });
 
+      console.log(`[Census] Response status: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
-        throw new Error(`Census API error: ${response.status}`);
+        const text = await response.text();
+        console.error(`[Census] API error response: ${text.substring(0, 500)}`);
+        return [];
+      }
+
+      const contentType = response.headers.get('content-type');
+      console.log(`[Census] Content-Type: ${contentType}`);
+
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error(`[Census] Non-JSON response: ${text.substring(0, 500)}`);
+        return [];
       }
 
       const data = await response.json();
-      return this.parseCountyData(data);
+      console.log(`[Census] Response rows: ${Array.isArray(data) ? data.length : 'not an array'}`);
+
+      const counties = this.parseCountyData(data);
+      console.log(`[Census] Parsed ${counties.length} counties`);
+
+      return counties;
     } catch (error) {
-      console.error('Error fetching Census data:', error);
+      console.error('[Census] Error fetching data:', error);
       return [];
     }
   }
@@ -153,11 +173,17 @@ class CensusClient {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 86400 },
       });
 
       if (!response.ok) {
-        throw new Error(`Census API error: ${response.status}`);
+        console.error(`Census API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Census API returned non-JSON response');
+        return null;
       }
 
       const data = await response.json();
@@ -185,11 +211,17 @@ class CensusClient {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 86400 },
       });
 
       if (!response.ok) {
-        throw new Error(`Census API error: ${response.status}`);
+        console.error(`Census API error: ${response.status} ${response.statusText}`);
+        return [];
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Census API returned non-JSON response');
+        return [];
       }
 
       const data = await response.json();
@@ -216,11 +248,17 @@ class CensusClient {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 86400 },
       });
 
       if (!response.ok) {
-        throw new Error(`Census API error: ${response.status}`);
+        console.error(`Census API error: ${response.status} ${response.statusText}`);
+        return [];
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Census API returned non-JSON response');
+        return [];
       }
 
       const data = await response.json();
@@ -244,11 +282,17 @@ class CensusClient {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 86400 },
       });
 
       if (!response.ok) {
-        throw new Error(`Census API error: ${response.status}`);
+        console.error(`Census API error: ${response.status} ${response.statusText}`);
+        return [];
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Census API returned non-JSON response');
+        return [];
       }
 
       const data = await response.json();

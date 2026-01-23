@@ -395,16 +395,20 @@ class PredictionService {
     if (scenario.parameters.framing) {
       const currentAnalysis = modified.ballotAnalysis || {
         propositionId: modified.id,
+        wordCount: 150,
         readabilityScore: 50,
         sentimentScore: 0,
         complexity: 'moderate' as const,
         keyPhrases: [],
-        biasIndicators: [],
+        comparisonToSimilar: {
+          avgWordCount: 150,
+          avgReadability: 50,
+        },
       };
 
-      let newSentiment = currentAnalysis.sentimentScore + scenario.parameters.framing.titleSentiment;
+      const newSentiment = currentAnalysis.sentimentScore + scenario.parameters.framing.titleSentiment;
       let newReadability = currentAnalysis.readabilityScore;
-      let newComplexity = currentAnalysis.complexity;
+      let newComplexity: 'simple' | 'moderate' | 'complex' = currentAnalysis.complexity;
 
       // Apply complexity changes
       if (scenario.parameters.framing.summaryComplexity === 'simpler') {

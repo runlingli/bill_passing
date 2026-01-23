@@ -1,944 +1,21 @@
 /**
- * California Secretary of State Data Client
- * Fetches ballot measure information and election results
- * Data source: https://www.sos.ca.gov/elections/ballot-measures
+ * California Proposition Data Client
+ * Fetches ballot measure information using multiple data sources:
+ * 1. California Secretary of State Quick Guide to Props (primary source)
+ * 2. Open States API (v3) - For legislative data
+ *
+ * Data sources:
+ * - https://quickguidetoprops.sos.ca.gov/propositions/{date}
+ * - https://v3.openstates.org/
  */
 
-import { Proposition, PropositionResult, PropositionCategory } from '@/types';
+import { Proposition, PropositionCategory } from '@/types';
 
-const SOS_BASE_URL = 'https://www.sos.ca.gov';
+// California Secretary of State Quick Guide to Props
+const CA_SOS_QUICK_GUIDE = 'https://quickguidetoprops.sos.ca.gov/propositions';
 
-// Known proposition data from CA SOS (structured from public records)
-// In production, this would be fetched/scraped from the SOS website
-const KNOWN_PROPOSITIONS: Record<string, Partial<Proposition>> = {
-  // 2024 Propositions
-  '2024-2': {
-    number: '2',
-    year: 2024,
-    title: 'Public Education Facilities Bond Measure',
-    summary: 'Authorizes $10 billion in bonds for repair, upgrade, and construction of facilities at K-12 public schools and community colleges.',
-    category: 'education',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-3': {
-    number: '3',
-    year: 2024,
-    title: 'Marriage Equality',
-    summary: 'Amends California Constitution to remove language that states marriage is between a man and a woman.',
-    category: 'civil_rights',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-4': {
-    number: '4',
-    year: 2024,
-    title: 'Water, Wildfire, and Climate Bond',
-    summary: 'Authorizes $10 billion in bonds for safe drinking water, wildfire prevention, and climate infrastructure.',
-    category: 'environment',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-5': {
-    number: '5',
-    year: 2024,
-    title: 'Lower Supermajority Requirement for Local Housing and Infrastructure Bonds',
-    summary: 'Allows local bonds for affordable housing and infrastructure to pass with 55% approval instead of two-thirds.',
-    category: 'housing',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-6': {
-    number: '6',
-    year: 2024,
-    title: 'Eliminate Involuntary Servitude for Incarcerated Persons',
-    summary: 'Amends California Constitution to remove involuntary servitude as punishment for crime.',
-    category: 'civil_rights',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-32': {
-    number: '32',
-    year: 2024,
-    title: 'Minimum Wage Increase',
-    summary: 'Raises minimum wage to $18 per hour by 2026.',
-    category: 'labor',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-33': {
-    number: '33',
-    year: 2024,
-    title: 'Expand Local Rent Control',
-    summary: 'Repeals Costa-Hawkins Act, allowing cities to expand rent control.',
-    category: 'housing',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-34': {
-    number: '34',
-    year: 2024,
-    title: 'Healthcare Provider Requirements',
-    summary: 'Requires certain healthcare providers to spend 98% of revenues on patient care.',
-    category: 'healthcare',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-35': {
-    number: '35',
-    year: 2024,
-    title: 'Permanent Medi-Cal Funding',
-    summary: 'Makes permanent the existing tax on managed care organizations to fund Medi-Cal.',
-    category: 'healthcare',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-  '2024-36': {
-    number: '36',
-    year: 2024,
-    title: 'Criminal Sentencing and Theft Penalties',
-    summary: 'Increases penalties for certain drug and theft crimes, modifying Propositions 47 and 57.',
-    category: 'criminal_justice',
-    status: 'upcoming',
-    electionDate: '2024-11-05',
-  },
-
-  // Historical propositions with results
-  '2022-1': {
-    number: '1',
-    year: 2022,
-    title: 'Constitutional Right to Reproductive Freedom',
-    summary: 'Amends California Constitution to expressly include right to reproductive freedom.',
-    category: 'civil_rights',
-    status: 'passed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 7125518,
-      noVotes: 3933589,
-      yesPercentage: 64.4,
-      noPercentage: 35.6,
-      totalVotes: 11059107,
-      turnout: 0.52,
-      passed: true,
-    },
-  },
-  '2022-26': {
-    number: '26',
-    year: 2022,
-    title: 'Tribal Sports Wagering',
-    summary: 'Allows in-person sports betting at tribal casinos and horse racing tracks.',
-    category: 'government',
-    status: 'failed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 3523891,
-      noVotes: 6983276,
-      yesPercentage: 33.5,
-      noPercentage: 66.5,
-      totalVotes: 10507167,
-      turnout: 0.50,
-      passed: false,
-    },
-  },
-  '2022-27': {
-    number: '27',
-    year: 2022,
-    title: 'Online and Mobile Sports Betting',
-    summary: 'Allows online and mobile sports betting outside tribal lands.',
-    category: 'government',
-    status: 'failed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 1699927,
-      noVotes: 8914451,
-      yesPercentage: 16.0,
-      noPercentage: 84.0,
-      totalVotes: 10614378,
-      turnout: 0.50,
-      passed: false,
-    },
-  },
-  '2022-28': {
-    number: '28',
-    year: 2022,
-    title: 'Art and Music Education Funding',
-    summary: 'Provides additional funding for arts and music education in public schools.',
-    category: 'education',
-    status: 'passed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 6376542,
-      noVotes: 4150987,
-      yesPercentage: 60.6,
-      noPercentage: 39.4,
-      totalVotes: 10527529,
-      turnout: 0.50,
-      passed: true,
-    },
-  },
-  '2022-30': {
-    number: '30',
-    year: 2022,
-    title: 'Tax on Income Over $2 Million for Zero-Emission Vehicles',
-    summary: 'Increases tax on personal income over $2 million to fund zero-emission vehicle programs.',
-    category: 'taxation',
-    status: 'failed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 4092856,
-      noVotes: 6385927,
-      yesPercentage: 39.1,
-      noPercentage: 60.9,
-      totalVotes: 10478783,
-      turnout: 0.50,
-      passed: false,
-    },
-  },
-  '2022-31': {
-    number: '31',
-    year: 2022,
-    title: 'Referendum on Flavored Tobacco Ban',
-    summary: 'Upholds or rejects 2020 law banning sale of flavored tobacco products.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2022-11-08',
-    result: {
-      yesVotes: 6698533,
-      noVotes: 3912475,
-      yesPercentage: 63.1,
-      noPercentage: 36.9,
-      totalVotes: 10611008,
-      turnout: 0.50,
-      passed: true,
-    },
-  },
-
-  // 2020 Propositions
-  '2020-14': {
-    number: '14',
-    year: 2020,
-    title: 'Stem Cell Research Institute Bond',
-    summary: 'Authorizes $5.5 billion in bonds for stem cell and other medical research.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 7878570,
-      noVotes: 6775498,
-      yesPercentage: 53.8,
-      noPercentage: 46.2,
-      totalVotes: 14654068,
-      turnout: 0.67,
-      passed: true,
-    },
-  },
-  '2020-15': {
-    number: '15',
-    year: 2020,
-    title: 'Property Tax for Commercial Properties',
-    summary: 'Increases funding for schools and local governments by changing tax assessment of commercial properties.',
-    category: 'taxation',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 6724058,
-      noVotes: 7995837,
-      yesPercentage: 45.7,
-      noPercentage: 54.3,
-      totalVotes: 14719895,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-  '2020-16': {
-    number: '16',
-    year: 2020,
-    title: 'Repeal Proposition 209 Affirmative Action',
-    summary: 'Allows diversity as a factor in public employment, education, and contracting decisions.',
-    category: 'civil_rights',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 6477732,
-      noVotes: 8222611,
-      yesPercentage: 44.1,
-      noPercentage: 55.9,
-      totalVotes: 14700343,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-  '2020-17': {
-    number: '17',
-    year: 2020,
-    title: 'Voting Rights for Parolees',
-    summary: 'Restores voting rights to people on parole for felony convictions.',
-    category: 'civil_rights',
-    status: 'passed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 8583771,
-      noVotes: 6116119,
-      yesPercentage: 58.4,
-      noPercentage: 41.6,
-      totalVotes: 14699890,
-      turnout: 0.67,
-      passed: true,
-    },
-  },
-  '2020-18': {
-    number: '18',
-    year: 2020,
-    title: 'Primary Voting for 17-Year-Olds',
-    summary: 'Allows 17-year-olds who will be 18 by general election to vote in primaries.',
-    category: 'civil_rights',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 6666149,
-      noVotes: 7941785,
-      yesPercentage: 45.6,
-      noPercentage: 54.4,
-      totalVotes: 14607934,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-  '2020-19': {
-    number: '19',
-    year: 2020,
-    title: 'Property Tax Transfers and Exemptions',
-    summary: 'Changes property tax rules for inherited properties and disaster victims.',
-    category: 'taxation',
-    status: 'passed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 7447828,
-      noVotes: 6869457,
-      yesPercentage: 52.0,
-      noPercentage: 48.0,
-      totalVotes: 14317285,
-      turnout: 0.65,
-      passed: true,
-    },
-  },
-  '2020-20': {
-    number: '20',
-    year: 2020,
-    title: 'Criminal Sentencing and DNA Collection',
-    summary: 'Restricts parole for certain offenses and authorizes felony charges for theft crimes.',
-    category: 'criminal_justice',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 5600855,
-      noVotes: 8923055,
-      yesPercentage: 38.6,
-      noPercentage: 61.4,
-      totalVotes: 14523910,
-      turnout: 0.66,
-      passed: false,
-    },
-  },
-  '2020-21': {
-    number: '21',
-    year: 2020,
-    title: 'Expand Local Rent Control',
-    summary: 'Allows cities to expand rent control policies beyond current limits.',
-    category: 'housing',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 5730052,
-      noVotes: 8966538,
-      yesPercentage: 39.0,
-      noPercentage: 61.0,
-      totalVotes: 14696590,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-  '2020-22': {
-    number: '22',
-    year: 2020,
-    title: 'App-Based Drivers as Independent Contractors',
-    summary: 'Considers app-based drivers to be independent contractors, not employees.',
-    category: 'labor',
-    status: 'passed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 9958725,
-      noVotes: 5781034,
-      yesPercentage: 63.3,
-      noPercentage: 36.7,
-      totalVotes: 15739759,
-      turnout: 0.72,
-      passed: true,
-    },
-  },
-  '2020-23': {
-    number: '23',
-    year: 2020,
-    title: 'Kidney Dialysis Clinics Requirements',
-    summary: 'Requires physician on-site at dialysis clinics and limits clinics ability to close.',
-    category: 'healthcare',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 4971398,
-      noVotes: 9628073,
-      yesPercentage: 34.1,
-      noPercentage: 65.9,
-      totalVotes: 14599471,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-  '2020-24': {
-    number: '24',
-    year: 2020,
-    title: 'Consumer Personal Information Law',
-    summary: 'Expands consumer privacy protections and creates California Privacy Protection Agency.',
-    category: 'civil_rights',
-    status: 'passed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 8261297,
-      noVotes: 6195859,
-      yesPercentage: 57.1,
-      noPercentage: 42.9,
-      totalVotes: 14457156,
-      turnout: 0.66,
-      passed: true,
-    },
-  },
-  '2020-25': {
-    number: '25',
-    year: 2020,
-    title: 'Cash Bail Referendum',
-    summary: 'Referendum to uphold or reject law replacing cash bail with risk assessments.',
-    category: 'criminal_justice',
-    status: 'failed',
-    electionDate: '2020-11-03',
-    result: {
-      yesVotes: 6680570,
-      noVotes: 7947245,
-      yesPercentage: 45.7,
-      noPercentage: 54.3,
-      totalVotes: 14627815,
-      turnout: 0.67,
-      passed: false,
-    },
-  },
-
-  // 2018 Propositions
-  '2018-1': {
-    number: '1',
-    year: 2018,
-    title: 'Housing Programs and Veterans Loans Bond',
-    summary: 'Authorizes $4 billion in bonds for housing programs and veteran home loans.',
-    category: 'housing',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 6488528,
-      noVotes: 4844188,
-      yesPercentage: 57.3,
-      noPercentage: 42.7,
-      totalVotes: 11332716,
-      turnout: 0.53,
-      passed: true,
-    },
-  },
-  '2018-2': {
-    number: '2',
-    year: 2018,
-    title: 'Mental Health Services Act Revenue Bond',
-    summary: 'Authorizes bonds to fund housing for mentally ill individuals who are homeless.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 6549907,
-      noVotes: 4785093,
-      yesPercentage: 57.8,
-      noPercentage: 42.2,
-      totalVotes: 11335000,
-      turnout: 0.53,
-      passed: true,
-    },
-  },
-  '2018-3': {
-    number: '3',
-    year: 2018,
-    title: 'Water Infrastructure and Watershed Bond',
-    summary: 'Authorizes $8.9 billion in bonds for water infrastructure projects.',
-    category: 'environment',
-    status: 'failed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 4927221,
-      noVotes: 6186694,
-      yesPercentage: 44.3,
-      noPercentage: 55.7,
-      totalVotes: 11113915,
-      turnout: 0.52,
-      passed: false,
-    },
-  },
-  '2018-4': {
-    number: '4',
-    year: 2018,
-    title: 'Children\'s Hospital Bond',
-    summary: 'Authorizes $1.5 billion in bonds for children\'s hospitals construction and renovation.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 6388907,
-      noVotes: 4823227,
-      yesPercentage: 57.0,
-      noPercentage: 43.0,
-      totalVotes: 11212134,
-      turnout: 0.52,
-      passed: true,
-    },
-  },
-  '2018-5': {
-    number: '5',
-    year: 2018,
-    title: 'Property Tax Transfer Initiative',
-    summary: 'Allows homebuyers who are 55+ or disabled to transfer property tax base.',
-    category: 'taxation',
-    status: 'failed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 4803990,
-      noVotes: 6284660,
-      yesPercentage: 43.3,
-      noPercentage: 56.7,
-      totalVotes: 11088650,
-      turnout: 0.52,
-      passed: false,
-    },
-  },
-  '2018-6': {
-    number: '6',
-    year: 2018,
-    title: 'Voter Approval for Gas and Vehicle Taxes',
-    summary: 'Eliminates gas and vehicle taxes passed by legislature in 2017.',
-    category: 'taxation',
-    status: 'failed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 4891389,
-      noVotes: 6404243,
-      yesPercentage: 43.3,
-      noPercentage: 56.7,
-      totalVotes: 11295632,
-      turnout: 0.53,
-      passed: false,
-    },
-  },
-  '2018-7': {
-    number: '7',
-    year: 2018,
-    title: 'Permanent Daylight Saving Time',
-    summary: 'Allows legislature to change daylight saving time if federal law permits.',
-    category: 'government',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 6860762,
-      noVotes: 4191467,
-      yesPercentage: 62.1,
-      noPercentage: 37.9,
-      totalVotes: 11052229,
-      turnout: 0.52,
-      passed: true,
-    },
-  },
-  '2018-8': {
-    number: '8',
-    year: 2018,
-    title: 'Kidney Dialysis Clinics Initiative',
-    summary: 'Limits charges and requires rebates for dialysis clinic revenues.',
-    category: 'healthcare',
-    status: 'failed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 3799127,
-      noVotes: 7415609,
-      yesPercentage: 33.9,
-      noPercentage: 66.1,
-      totalVotes: 11214736,
-      turnout: 0.52,
-      passed: false,
-    },
-  },
-  '2018-10': {
-    number: '10',
-    year: 2018,
-    title: 'Local Rent Control Initiative',
-    summary: 'Expands local governments authority to enact rent control.',
-    category: 'housing',
-    status: 'failed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 3926477,
-      noVotes: 7196798,
-      yesPercentage: 35.3,
-      noPercentage: 64.7,
-      totalVotes: 11123275,
-      turnout: 0.52,
-      passed: false,
-    },
-  },
-  '2018-11': {
-    number: '11',
-    year: 2018,
-    title: 'Ambulance Employee Meal and Rest Breaks',
-    summary: 'Requires private ambulance employees to remain on-call during breaks.',
-    category: 'labor',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 5882295,
-      noVotes: 4621608,
-      yesPercentage: 56.0,
-      noPercentage: 44.0,
-      totalVotes: 10503903,
-      turnout: 0.49,
-      passed: true,
-    },
-  },
-  '2018-12': {
-    number: '12',
-    year: 2018,
-    title: 'Farm Animal Confinement Initiative',
-    summary: 'Establishes minimum requirements for confining farm animals and bans sale of non-compliant products.',
-    category: 'environment',
-    status: 'passed',
-    electionDate: '2018-11-06',
-    result: {
-      yesVotes: 6811150,
-      noVotes: 4369014,
-      yesPercentage: 60.9,
-      noPercentage: 39.1,
-      totalVotes: 11180164,
-      turnout: 0.52,
-      passed: true,
-    },
-  },
-
-  // 2016 Propositions
-  '2016-51': {
-    number: '51',
-    year: 2016,
-    title: 'School Facilities Bond',
-    summary: 'Authorizes $9 billion in bonds for school construction and modernization.',
-    category: 'education',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 7529825,
-      noVotes: 5737891,
-      yesPercentage: 56.7,
-      noPercentage: 43.3,
-      totalVotes: 13267716,
-      turnout: 0.58,
-      passed: true,
-    },
-  },
-  '2016-52': {
-    number: '52',
-    year: 2016,
-    title: 'Medi-Cal Hospital Fee Program',
-    summary: 'Extends hospital fee program to fund Medi-Cal health services.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 9507823,
-      noVotes: 3647509,
-      yesPercentage: 72.3,
-      noPercentage: 27.7,
-      totalVotes: 13155332,
-      turnout: 0.58,
-      passed: true,
-    },
-  },
-  '2016-53': {
-    number: '53',
-    year: 2016,
-    title: 'Revenue Bonds Voter Approval',
-    summary: 'Requires statewide voter approval for certain revenue bonds.',
-    category: 'government',
-    status: 'failed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 5762588,
-      noVotes: 7030847,
-      yesPercentage: 45.0,
-      noPercentage: 55.0,
-      totalVotes: 12793435,
-      turnout: 0.56,
-      passed: false,
-    },
-  },
-  '2016-54': {
-    number: '54',
-    year: 2016,
-    title: 'Legislature Transparency',
-    summary: 'Requires legislature to post bills online 72 hours before vote.',
-    category: 'government',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 8802063,
-      noVotes: 4044795,
-      yesPercentage: 68.5,
-      noPercentage: 31.5,
-      totalVotes: 12846858,
-      turnout: 0.56,
-      passed: true,
-    },
-  },
-  '2016-55': {
-    number: '55',
-    year: 2016,
-    title: 'Tax Extension for Education and Healthcare',
-    summary: 'Extends income tax increases on high earners to fund education and healthcare.',
-    category: 'taxation',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 8285619,
-      noVotes: 5105789,
-      yesPercentage: 61.9,
-      noPercentage: 38.1,
-      totalVotes: 13391408,
-      turnout: 0.59,
-      passed: true,
-    },
-  },
-  '2016-56': {
-    number: '56',
-    year: 2016,
-    title: 'Cigarette Tax Increase',
-    summary: 'Increases cigarette tax by $2 per pack for healthcare programs.',
-    category: 'healthcare',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 8756055,
-      noVotes: 4889412,
-      yesPercentage: 64.2,
-      noPercentage: 35.8,
-      totalVotes: 13645467,
-      turnout: 0.60,
-      passed: true,
-    },
-  },
-  '2016-57': {
-    number: '57',
-    year: 2016,
-    title: 'Parole for Nonviolent Offenders',
-    summary: 'Allows parole consideration for nonviolent felons and authorizes sentence credits.',
-    category: 'criminal_justice',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 8829068,
-      noVotes: 4735476,
-      yesPercentage: 65.1,
-      noPercentage: 34.9,
-      totalVotes: 13564544,
-      turnout: 0.59,
-      passed: true,
-    },
-  },
-  '2016-58': {
-    number: '58',
-    year: 2016,
-    title: 'English Proficiency - Multilingual Education',
-    summary: 'Allows schools to establish multilingual education programs.',
-    category: 'education',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 9682878,
-      noVotes: 3792063,
-      yesPercentage: 71.9,
-      noPercentage: 28.1,
-      totalVotes: 13474941,
-      turnout: 0.59,
-      passed: true,
-    },
-  },
-  '2016-59': {
-    number: '59',
-    year: 2016,
-    title: 'Corporate Political Spending Advisory',
-    summary: 'Advisory measure on whether to overturn Citizens United ruling.',
-    category: 'government',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 7287071,
-      noVotes: 5403339,
-      yesPercentage: 57.4,
-      noPercentage: 42.6,
-      totalVotes: 12690410,
-      turnout: 0.56,
-      passed: true,
-    },
-  },
-  '2016-60': {
-    number: '60',
-    year: 2016,
-    title: 'Adult Films Condom Requirements',
-    summary: 'Requires use of condoms in adult films and producer liability.',
-    category: 'healthcare',
-    status: 'failed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 5885679,
-      noVotes: 7213252,
-      yesPercentage: 44.9,
-      noPercentage: 55.1,
-      totalVotes: 13098931,
-      turnout: 0.57,
-      passed: false,
-    },
-  },
-  '2016-61': {
-    number: '61',
-    year: 2016,
-    title: 'State Prescription Drug Price Standards',
-    summary: 'Prohibits state from paying more for drugs than US Department of Veterans Affairs.',
-    category: 'healthcare',
-    status: 'failed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 6041951,
-      noVotes: 7139766,
-      yesPercentage: 45.8,
-      noPercentage: 54.2,
-      totalVotes: 13181717,
-      turnout: 0.58,
-      passed: false,
-    },
-  },
-  '2016-62': {
-    number: '62',
-    year: 2016,
-    title: 'Repeal Death Penalty',
-    summary: 'Replaces death penalty with life imprisonment without parole.',
-    category: 'criminal_justice',
-    status: 'failed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 5978687,
-      noVotes: 7369428,
-      yesPercentage: 44.8,
-      noPercentage: 55.2,
-      totalVotes: 13348115,
-      turnout: 0.58,
-      passed: false,
-    },
-  },
-  '2016-63': {
-    number: '63',
-    year: 2016,
-    title: 'Background Checks for Ammunition',
-    summary: 'Requires background checks for ammunition purchases and large-capacity magazine ban.',
-    category: 'criminal_justice',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 8849678,
-      noVotes: 4583419,
-      yesPercentage: 65.9,
-      noPercentage: 34.1,
-      totalVotes: 13433097,
-      turnout: 0.59,
-      passed: true,
-    },
-  },
-  '2016-64': {
-    number: '64',
-    year: 2016,
-    title: 'Marijuana Legalization',
-    summary: 'Legalizes marijuana for recreational use by adults 21 and older.',
-    category: 'criminal_justice',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 7866798,
-      noVotes: 5833229,
-      yesPercentage: 57.4,
-      noPercentage: 42.6,
-      totalVotes: 13700027,
-      turnout: 0.60,
-      passed: true,
-    },
-  },
-  '2016-65': {
-    number: '65',
-    year: 2016,
-    title: 'Carryout Bag Charges',
-    summary: 'Redirects bag fee revenue to environmental programs.',
-    category: 'environment',
-    status: 'failed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 5392178,
-      noVotes: 7698200,
-      yesPercentage: 41.2,
-      noPercentage: 58.8,
-      totalVotes: 13090378,
-      turnout: 0.57,
-      passed: false,
-    },
-  },
-  '2016-66': {
-    number: '66',
-    year: 2016,
-    title: 'Death Penalty Procedures',
-    summary: 'Changes procedures governing state death penalty appeals.',
-    category: 'criminal_justice',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 6768717,
-      noVotes: 6406555,
-      yesPercentage: 51.4,
-      noPercentage: 48.6,
-      totalVotes: 13175272,
-      turnout: 0.58,
-      passed: true,
-    },
-  },
-  '2016-67': {
-    number: '67',
-    year: 2016,
-    title: 'Plastic Bag Ban Referendum',
-    summary: 'Upholds or rejects statewide ban on single-use plastic bags.',
-    category: 'environment',
-    status: 'passed',
-    electionDate: '2016-11-08',
-    result: {
-      yesVotes: 6871927,
-      noVotes: 6167960,
-      yesPercentage: 52.7,
-      noPercentage: 47.3,
-      totalVotes: 13039887,
-      turnout: 0.57,
-      passed: true,
-    },
-  },
-};
+// Open States API for California legislative data
+const OPEN_STATES_API = 'https://v3.openstates.org';
 
 export interface BallotMeasureInfo {
   measureNumber: string;
@@ -963,204 +40,522 @@ export interface ElectionResult {
   countyResults?: Record<string, { yes: number; no: number }>;
 }
 
+// Known California election dates for statewide propositions
+const CA_ELECTION_DATES: Record<number, string[]> = {
+  2026: ['2026-11-03', '2026-06-02'], // Gubernatorial year
+  2025: ['2025-11-04'], // Off-year special election
+  2024: ['2024-11-05', '2024-03-05'],
+  2022: ['2022-11-08'],
+  2021: ['2021-09-14'],
+  2020: ['2020-11-03', '2020-03-03'],
+  2018: ['2018-11-06', '2018-06-05'],
+  2016: ['2016-11-08'],
+};
+
+// Real proposition data from CA Secretary of State and Ballotpedia
+// Source: https://www.sos.ca.gov/elections/ballot-measures/qualified-ballot-measures
+// Source: https://ballotpedia.org/California_2026_ballot_propositions
+const KNOWN_PROPOSITIONS: Record<number, Proposition[]> = {
+  2026: [
+    {
+      id: '2026-1',
+      number: '1',
+      year: 2026,
+      electionDate: '2026-11-03',
+      title: 'Allow Public Financing of Election Campaigns',
+      summary: 'Allow the state and local governments to create programs that provide candidates with public funds under spending limits and eligibility rules. Also known as the California Fair Elections Act of 2026.',
+      status: 'upcoming',
+      category: 'government',
+    },
+    {
+      id: '2026-2',
+      number: '2',
+      year: 2026,
+      electionDate: '2026-11-03',
+      title: 'Eliminate Successor Election at State Officer Recall',
+      summary: 'Eliminate the successor election when a state officer is recalled, thereby leaving the office vacant until it is filled according to state law.',
+      status: 'upcoming',
+      category: 'government',
+    },
+    {
+      id: '2026-3',
+      number: '3',
+      year: 2026,
+      electionDate: '2026-11-03',
+      title: 'Vote Requirements for Initiatives Requiring Supermajority Votes',
+      summary: 'Require initiatives that change vote thresholds to supermajority votes to pass by the same vote requirement as is being proposed.',
+      status: 'upcoming',
+      category: 'government',
+    },
+  ],
+  2025: [
+    {
+      id: '2025-50',
+      number: '50',
+      year: 2025,
+      electionDate: '2025-11-04',
+      title: 'Use of Legislative Congressional Redistricting Map Amendment',
+      summary: 'Allow the state to use a new, legislature-drawn congressional district map for 2026 through 2030.',
+      status: 'passed',
+      category: 'government',
+      result: {
+        passed: true,
+        yesVotes: 7453339,
+        noVotes: 4116998,
+        yesPercentage: 64,
+        noPercentage: 36,
+        totalVotes: 11570337,
+        turnout: 0.45,
+      },
+    },
+  ],
+};
+
+interface OpenStatesBill {
+  id: string;
+  identifier: string;
+  title: string;
+  abstract?: string;
+  classification: string[];
+  subject: string[];
+  session: string;
+  created_at: string;
+  updated_at: string;
+  from_organization?: {
+    name: string;
+  };
+  extras?: Record<string, unknown>;
+}
+
 class CASosClient {
-  private baseUrl: string;
+  private openStatesApiKey: string | undefined;
 
   constructor() {
-    this.baseUrl = SOS_BASE_URL;
+    this.openStatesApiKey = process.env.OPEN_STATES_API_KEY;
   }
 
   /**
    * Get all propositions for a given year
+   * Tries multiple data sources in order of preference
    */
   async getPropositionsByYear(year: number): Promise<Proposition[]> {
-    const propositions: Proposition[] = [];
+    console.log(`[CA-SOS] Fetching propositions for year ${year}`);
+    console.log(`[CA-SOS] Open States API Key present: ${!!this.openStatesApiKey}`);
 
-    // Filter known propositions by year
-    for (const [key, prop] of Object.entries(KNOWN_PROPOSITIONS)) {
-      if (key.startsWith(`${year}-`)) {
-        propositions.push({
-          id: key,
-          number: prop.number || '',
-          year: prop.year || year,
-          electionDate: prop.electionDate || '',
-          title: prop.title || '',
-          summary: prop.summary || '',
-          status: prop.status || 'upcoming',
-          category: prop.category || 'other',
-          sponsors: [],
-          opponents: [],
-          result: prop.result,
+    // Try CA Secretary of State Quick Guide first (most reliable for propositions)
+    let propositions = await this.fetchFromCASOS(year);
+
+    if (propositions.length > 0) {
+      console.log(`[CA-SOS] Found ${propositions.length} propositions from CA SOS Quick Guide`);
+      return propositions;
+    }
+
+    // Try Open States API as fallback
+    propositions = await this.fetchFromOpenStates(year);
+
+    if (propositions.length > 0) {
+      console.log(`[CA-SOS] Found ${propositions.length} propositions from Open States API`);
+      return propositions;
+    }
+
+    // Use known propositions data as final fallback (real data from CA SOS/Ballotpedia)
+    if (KNOWN_PROPOSITIONS[year]) {
+      console.log(`[CA-SOS] Using known propositions data for year ${year}`);
+      return KNOWN_PROPOSITIONS[year];
+    }
+
+    console.log(`[CA-SOS] No propositions found for year ${year} from any source`);
+    return [];
+  }
+
+  /**
+   * Fetch propositions from California Secretary of State Quick Guide
+   */
+  private async fetchFromCASOS(year: number): Promise<Proposition[]> {
+    const electionDates = CA_ELECTION_DATES[year] || this.generateElectionDates(year);
+    const allPropositions: Proposition[] = [];
+
+    for (const electionDate of electionDates) {
+      const url = `${CA_SOS_QUICK_GUIDE}/${electionDate}`;
+      console.log(`[CA-SOS] Fetching from CA SOS: ${url}`);
+
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'text/html',
+            'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
+          },
         });
+
+        console.log(`[CA-SOS] CA SOS response status: ${response.status}`);
+
+        if (!response.ok) {
+          console.log(`[CA-SOS] CA SOS returned ${response.status} for ${electionDate}`);
+          continue;
+        }
+
+        const html = await response.text();
+        const propositions = this.parseCASOSHtml(html, year, electionDate);
+        console.log(`[CA-SOS] Parsed ${propositions.length} propositions from ${electionDate}`);
+        allPropositions.push(...propositions);
+      } catch (error) {
+        console.error(`[CA-SOS] Error fetching from CA SOS for ${electionDate}:`, error);
       }
     }
 
-    // Try to fetch additional data from SOS website
-    try {
-      const additionalData = await this.fetchPropositionsFromSOS(year);
-      // Merge with known data
-      for (const item of additionalData) {
-        const existingIndex = propositions.findIndex(
-          p => p.number === item.measureNumber
-        );
-        if (existingIndex >= 0) {
-          // Update with fetched data
-          propositions[existingIndex].sponsors = item.proponents;
-          propositions[existingIndex].opponents = item.opponents;
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching from SOS:', error);
+    return allPropositions;
+  }
+
+  /**
+   * Parse HTML from CA SOS Quick Guide to extract propositions
+   * HTML structure: <a href=".../propositions/DATE/NUMBER">...<h2>TITLE</h2></a>
+   */
+  private parseCASOSHtml(html: string, year: number, electionDate: string): Proposition[] {
+    const propositions: Proposition[] = [];
+
+    // Match proposition URLs and extract the number
+    // Pattern: /propositions/YYYY-MM-DD/NUMBER followed by h2 with title
+    const propPattern = /propositions\/[\d-]+\/(\d+)"[^>]*>[\s\S]*?<h2[^>]*>\s*([\s\S]*?)\s*<\/h2>/gi;
+
+    let match;
+    while ((match = propPattern.exec(html)) !== null) {
+      const number = match[1];
+      let title = match[2].trim();
+
+      // Clean up the title - remove extra whitespace and newlines
+      title = title.replace(/\s+/g, ' ').trim();
+      if (title.length < 5) continue; // Skip if title is too short
+
+      // Skip if we already have this proposition
+      if (propositions.some(p => p.number === number)) continue;
+
+      // Clean up the title
+      title = this.cleanTitle(title, number);
+
+      const proposition: Proposition = {
+        id: `${year}-${number}`,
+        number,
+        year,
+        electionDate,
+        title,
+        summary: title,
+        status: new Date(electionDate) < new Date() ? 'passed' : 'upcoming',
+        category: this.inferCategory(title),
+      };
+
+      propositions.push(proposition);
     }
 
     return propositions.sort((a, b) => parseInt(a.number) - parseInt(b.number));
   }
 
   /**
-   * Get a specific proposition
+   * Generate election dates for a given year
    */
-  async getProposition(year: number, number: string): Promise<Proposition | null> {
-    const key = `${year}-${number}`;
-    const known = KNOWN_PROPOSITIONS[key];
+  private generateElectionDates(year: number): string[] {
+    const dates: string[] = [];
 
-    if (!known) {
-      return null;
+    // November general election (first Tuesday after first Monday)
+    // This is typically between Nov 2-8
+    const novFirst = new Date(year, 10, 1); // November 1
+    const dayOfWeek = novFirst.getDay();
+    let novElection: number;
+
+    if (dayOfWeek <= 1) {
+      // Sunday(0) or Monday(1) - election is Nov 2 or Nov 3
+      novElection = dayOfWeek === 0 ? 3 : 2;
+    } else {
+      // Tuesday(2) through Saturday(6) - next week
+      novElection = 9 - dayOfWeek;
     }
 
-    return {
-      id: key,
-      number: known.number || number,
-      year: known.year || year,
-      electionDate: known.electionDate || '',
-      title: known.title || '',
-      summary: known.summary || '',
-      status: known.status || 'upcoming',
-      category: known.category || 'other',
-      sponsors: [],
-      opponents: [],
-      result: known.result,
-    };
-  }
+    dates.push(`${year}-11-${String(novElection).padStart(2, '0')}`);
 
-  /**
-   * Get election results for a proposition
-   */
-  async getElectionResults(year: number, measureNumber: string): Promise<ElectionResult | null> {
-    const key = `${year}-${measureNumber}`;
-    const prop = KNOWN_PROPOSITIONS[key];
+    // March primary (first Tuesday in March) - only in presidential/gubernatorial years
+    if (year % 4 === 0 || year % 4 === 2) {
+      const marFirst = new Date(year, 2, 1); // March 1
+      const marDayOfWeek = marFirst.getDay();
+      let marElection: number;
 
-    if (!prop?.result) {
-      // Try to fetch from SOS results page
-      return this.fetchResultsFromSOS(year, measureNumber);
-    }
-
-    return {
-      measureNumber,
-      year,
-      yesVotes: prop.result.yesVotes,
-      noVotes: prop.result.noVotes,
-      yesPercentage: prop.result.yesPercentage,
-      noPercentage: prop.result.noPercentage,
-      totalVotes: prop.result.totalVotes,
-      passed: prop.result.passed,
-    };
-  }
-
-  /**
-   * Get historical results for similar propositions
-   */
-  async getHistoricalResults(category: PropositionCategory, years = 10): Promise<ElectionResult[]> {
-    const results: ElectionResult[] = [];
-    const currentYear = new Date().getFullYear();
-
-    for (const [key, prop] of Object.entries(KNOWN_PROPOSITIONS)) {
-      if (prop.category === category && prop.result && prop.year && prop.year >= currentYear - years) {
-        results.push({
-          measureNumber: prop.number || '',
-          year: prop.year,
-          yesVotes: prop.result.yesVotes,
-          noVotes: prop.result.noVotes,
-          yesPercentage: prop.result.yesPercentage,
-          noPercentage: prop.result.noPercentage,
-          totalVotes: prop.result.totalVotes,
-          passed: prop.result.passed,
-        });
+      if (marDayOfWeek === 2) {
+        marElection = 1; // March 1 is Tuesday
+      } else if (marDayOfWeek < 2) {
+        marElection = 3 - marDayOfWeek;
+      } else {
+        marElection = 10 - marDayOfWeek;
       }
+
+      dates.push(`${year}-03-${String(marElection).padStart(2, '0')}`);
     }
 
-    return results.sort((a, b) => b.year - a.year);
+    return dates;
   }
 
   /**
-   * Fetch proposition info from SOS website
+   * Fetch propositions from Open States API
    */
-  private async fetchPropositionsFromSOS(year: number): Promise<BallotMeasureInfo[]> {
+  private async fetchFromOpenStates(year: number): Promise<Proposition[]> {
+    if (!this.openStatesApiKey) {
+      console.log('[CA-SOS] No Open States API key configured, skipping...');
+      return [];
+    }
+
     try {
-      // The SOS website has a structured page for ballot measures
-      const url = `${this.baseUrl}/elections/ballot-measures/qualified-ballot-measures`;
+      // Open States uses session identifiers like "2023-2024"
+      const sessionStart = year % 2 === 0 ? year - 1 : year;
+      const session = `${sessionStart}-${sessionStart + 1}`;
+
+      // Search for constitutional amendments in California
+      const url = `${OPEN_STATES_API}/bills?jurisdiction=ca&session=${session}&classification=constitutional+amendment&per_page=20`;
+
+      console.log(`[CA-SOS] Fetching from Open States: ${url}`);
 
       const response = await fetch(url, {
         headers: {
-          'Accept': 'text/html',
-          'User-Agent': 'CA-Proposition-Predictor/1.0',
+          'X-API-KEY': this.openStatesApiKey,
+          'Accept': 'application/json',
         },
-        next: { revalidate: 3600 },
       });
 
+      console.log(`[CA-SOS] Open States response status: ${response.status}`);
+
       if (!response.ok) {
+        const text = await response.text();
+        console.error(`[CA-SOS] Open States API error: ${response.status} - ${text.substring(0, 200)}`);
         return [];
       }
 
-      // In a real implementation, we would parse the HTML
-      // For now, return empty array as we have structured data above
-      return [];
+      const data = await response.json();
+      console.log(`[CA-SOS] Open States returned ${data.results?.length || 0} results`);
+
+      if (!data.results || data.results.length === 0) {
+        return [];
+      }
+
+      // Transform Open States bills to propositions
+      const propositions = data.results
+        .map((bill: OpenStatesBill, index: number) => this.transformOpenStatesBill(bill, year, index));
+
+      return propositions;
     } catch (error) {
-      console.error('Error fetching from SOS:', error);
+      console.error('[CA-SOS] Error fetching from Open States:', error);
       return [];
     }
   }
 
   /**
-   * Fetch election results from SOS
+   * Get a specific proposition
    */
-  private async fetchResultsFromSOS(year: number, measureNumber: string): Promise<ElectionResult | null> {
-    try {
-      // SOS publishes results in various formats
-      // Example: https://www.sos.ca.gov/elections/prior-elections/statewide-election-results
-      const url = `${this.baseUrl}/elections/prior-elections/statewide-election-results/general-election-${year}`;
+  async getProposition(year: number, number: string): Promise<Proposition | null> {
+    const propositions = await this.getPropositionsByYear(year);
+    return propositions.find(p => p.number === number) || null;
+  }
 
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'text/html',
-          'User-Agent': 'CA-Proposition-Predictor/1.0',
-        },
-        next: { revalidate: 86400 },
-      });
+  /**
+   * Get election results - not directly available from these APIs
+   */
+  async getElectionResults(_year: number, _measureNumber: string): Promise<ElectionResult | null> {
+    // Election results would need a different data source
+    // California Secretary of State provides historical results but not via API
+    return null;
+  }
 
-      if (!response.ok) {
-        return null;
-      }
-
-      // Would parse HTML for results
-      return null;
-    } catch (error) {
-      console.error('Error fetching results:', error);
-      return null;
-    }
+  /**
+   * Get historical results for similar propositions by category
+   */
+  async getHistoricalResults(_category: PropositionCategory, _years = 10): Promise<ElectionResult[]> {
+    // Historical results not available from these APIs
+    return [];
   }
 
   /**
    * Get all available years with proposition data
+   * Includes both regular election years (even years) and special election years (odd years)
    */
-  getAvailableYears(): number[] {
-    const years = new Set<number>();
-    for (const [key] of Object.entries(KNOWN_PROPOSITIONS)) {
-      const year = parseInt(key.split('-')[0]);
-      if (!isNaN(year)) {
-        years.add(year);
+  async getAvailableYears(): Promise<number[]> {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+
+    // Include all years that have known election dates
+    for (let y = currentYear + 1; y >= currentYear - 10; y--) {
+      // Include year if it has election dates configured OR if it's an even year (regular elections)
+      if (CA_ELECTION_DATES[y] || y % 2 === 0) {
+        years.push(y);
       }
     }
-    return Array.from(years).sort((a, b) => b - a);
+
+    // Remove duplicates and sort descending
+    return [...new Set(years)].sort((a, b) => b - a);
+  }
+
+  /**
+   * Transform Open States bill to Proposition type
+   */
+  private transformOpenStatesBill(
+    bill: OpenStatesBill,
+    year: number,
+    index: number
+  ): Proposition {
+    // Extract proposition number from identifier or title
+    const propMatch = bill.identifier.match(/(\d+)/) || bill.title.match(/Proposition\s+(\d+)/i);
+    const number = propMatch ? propMatch[1] : String(index + 1);
+
+    // Determine election date (November of election year)
+    const electionDate = `${year}-11-05`; // First Tuesday after first Monday
+
+    const proposition: Proposition = {
+      id: `${year}-${number}`,
+      number,
+      year,
+      electionDate,
+      title: bill.title,
+      summary: bill.abstract || bill.title,
+      fullText: undefined,
+      status: new Date(electionDate) < new Date() ? 'passed' : 'upcoming',
+      category: this.inferCategoryFromSubjects(bill.subject) || this.inferCategory(bill.title),
+    };
+
+    // Only add sponsors if available
+    if (bill.from_organization) {
+      proposition.sponsors = [bill.from_organization.name];
+    }
+
+    return proposition;
+  }
+
+  /**
+   * Clean up proposition title - normalize casing and remove redundant prefixes
+   */
+  private cleanTitle(title: string, _propNumber: string): string {
+    let cleaned = title;
+
+    // Remove redundant "Proposition X" or "Proposition 0XX" prefixes
+    // Patterns: "Proposition 36:", "Proposition 036 -", "PROPOSITION 1:", etc.
+    cleaned = cleaned.replace(/^(?:PROP(?:OSITION)?\.?\s*0*\d+\s*[-:–—]?\s*)/i, '');
+
+    // Remove legislative reference patterns like:
+    // "SCA 10 (RESOLUTION CHAPTER 97, STATUTES OF 2022) ATKINS."
+    // "ACA 5 (resolution chapter 23), weber."
+    // "AB 48 (CHAPTER 530, STATUTES OF 2019), O DONNELL."
+    cleaned = cleaned.replace(/^(?:(?:SCA|ACA|AB|SB)\s*\d+\s*\([^)]+\)[,.]?\s*(?:[A-Z'\s]+\.?\s*)?)/i, '');
+
+    // Convert ALL CAPS to Title Case (if more than 50% is uppercase)
+    const upperCount = (cleaned.match(/[A-Z]/g) || []).length;
+    const letterCount = (cleaned.match(/[a-zA-Z]/g) || []).length;
+
+    if (letterCount > 0 && upperCount / letterCount > 0.5) {
+      cleaned = this.toTitleCase(cleaned);
+    }
+
+    // Trim and ensure it doesn't start with lowercase
+    cleaned = cleaned.trim();
+    if (cleaned.length > 0 && /^[a-z]/.test(cleaned)) {
+      cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Convert text to Title Case
+   */
+  private toTitleCase(text: string): string {
+    // Words that should stay lowercase (unless at start)
+    const lowercaseWords = new Set([
+      'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by',
+      'from', 'in', 'of', 'with', 'as', 'into', 'through', 'during', 'before',
+      'after', 'above', 'below', 'between', 'under', 'over'
+    ]);
+
+    return text
+      .toLowerCase()
+      .split(' ')
+      .map((word, index) => {
+        if (word.length === 0) return word;
+
+        // Always capitalize first word and words not in lowercase list
+        if (index === 0 || !lowercaseWords.has(word)) {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+      })
+      .join(' ');
+  }
+
+  /**
+   * Infer category from Open States subject tags
+   */
+  private inferCategoryFromSubjects(subjects: string[]): PropositionCategory | null {
+    if (!subjects || subjects.length === 0) return null;
+
+    const subjectsLower = subjects.map(s => s.toLowerCase());
+
+    if (subjectsLower.some(s => s.includes('tax') || s.includes('revenue') || s.includes('budget'))) {
+      return 'taxation';
+    }
+    if (subjectsLower.some(s => s.includes('education') || s.includes('school'))) {
+      return 'education';
+    }
+    if (subjectsLower.some(s => s.includes('health') || s.includes('medical'))) {
+      return 'healthcare';
+    }
+    if (subjectsLower.some(s => s.includes('environment') || s.includes('natural resources'))) {
+      return 'environment';
+    }
+    if (subjectsLower.some(s => s.includes('crime') || s.includes('criminal') || s.includes('judiciary'))) {
+      return 'criminal_justice';
+    }
+    if (subjectsLower.some(s => s.includes('labor') || s.includes('employment'))) {
+      return 'labor';
+    }
+    if (subjectsLower.some(s => s.includes('housing'))) {
+      return 'housing';
+    }
+    if (subjectsLower.some(s => s.includes('transportation'))) {
+      return 'transportation';
+    }
+    if (subjectsLower.some(s => s.includes('civil rights') || s.includes('elections'))) {
+      return 'civil_rights';
+    }
+
+    return null;
+  }
+
+  /**
+   * Infer category from proposition title
+   */
+  private inferCategory(title: string): PropositionCategory {
+    const lowerTitle = title.toLowerCase();
+
+    if (lowerTitle.includes('tax') || lowerTitle.includes('bond') || lowerTitle.includes('fee')) {
+      return 'taxation';
+    }
+    if (lowerTitle.includes('school') || lowerTitle.includes('education') || lowerTitle.includes('college')) {
+      return 'education';
+    }
+    if (lowerTitle.includes('health') || lowerTitle.includes('medical') || lowerTitle.includes('hospital')) {
+      return 'healthcare';
+    }
+    if (lowerTitle.includes('environment') || lowerTitle.includes('water') || lowerTitle.includes('climate') || lowerTitle.includes('energy')) {
+      return 'environment';
+    }
+    if (lowerTitle.includes('crime') || lowerTitle.includes('criminal') || lowerTitle.includes('prison') || lowerTitle.includes('police')) {
+      return 'criminal_justice';
+    }
+    if (lowerTitle.includes('labor') || lowerTitle.includes('worker') || lowerTitle.includes('wage') || lowerTitle.includes('employee')) {
+      return 'labor';
+    }
+    if (lowerTitle.includes('housing') || lowerTitle.includes('rent') || lowerTitle.includes('home')) {
+      return 'housing';
+    }
+    if (lowerTitle.includes('transport') || lowerTitle.includes('road') || lowerTitle.includes('highway') || lowerTitle.includes('rail')) {
+      return 'transportation';
+    }
+    if (lowerTitle.includes('rights') || lowerTitle.includes('vote') || lowerTitle.includes('marriage') || lowerTitle.includes('discrimination')) {
+      return 'civil_rights';
+    }
+
+    return 'government';
   }
 }
 

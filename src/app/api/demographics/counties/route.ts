@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { censusClient } from '@/lib/external-apis';
 
-export const revalidate = 86400; // Revalidate daily (census data is static)
+export const dynamic = 'force-dynamic'; // API calls external service
 
 export async function GET() {
   try {

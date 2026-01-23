@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Scenario,
   ScenarioParameters,
@@ -33,12 +33,14 @@ interface ScenarioBuilderProps {
   proposition: PropositionWithDetails;
   onScenarioRun: (scenario: Scenario) => void;
   initialScenario?: Scenario;
+  presetId?: string | null;
 }
 
 export function ScenarioBuilder({
   proposition,
   onScenarioRun,
   initialScenario,
+  presetId,
 }: ScenarioBuilderProps) {
   const [scenarioName, setScenarioName] = useState(initialScenario?.name || '');
   const [parameters, setParameters] = useState<ScenarioParameters>(
@@ -46,7 +48,7 @@ export function ScenarioBuilder({
   );
   const [isRunning, setIsRunning] = useState(false);
 
-  const handlePresetSelect = useCallback(async (presetId: string) => {
+  const handlePresetSelect = useCallback((presetId: string) => {
     const preset = SCENARIO_PRESETS.find((p) => p.id === presetId);
     if (preset) {
       setParameters({
@@ -56,6 +58,13 @@ export function ScenarioBuilder({
       setScenarioName(preset.name);
     }
   }, []);
+
+  // React to external preset selection
+  useEffect(() => {
+    if (presetId) {
+      handlePresetSelect(presetId);
+    }
+  }, [presetId, handlePresetSelect]);
 
   const handleReset = useCallback(() => {
     setParameters(scenarioService.getDefaultParameters());

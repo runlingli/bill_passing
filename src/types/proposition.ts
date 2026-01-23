@@ -13,8 +13,8 @@ export interface Proposition {
   status: PropositionStatus;
   result?: PropositionResult;
   category: PropositionCategory;
-  sponsors: string[];
-  opponents: string[];
+  sponsors?: string[];
+  opponents?: string[];
 }
 
 export type PropositionStatus = 'upcoming' | 'active' | 'passed' | 'failed';

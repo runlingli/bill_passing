@@ -270,17 +270,19 @@ export default function PropositionDetailPage({ params }: PageProps) {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Sponsors</p>
-                <p className="font-semibold">{proposition.sponsors.length}</p>
+        {proposition.sponsors && proposition.sponsors.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Sponsors</p>
+                  <p className="font-semibold">{proposition.sponsors.length}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Main Content Tabs */}
@@ -422,17 +424,21 @@ export default function PropositionDetailPage({ params }: PageProps) {
                   <CardTitle>Sponsors</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
-                    {proposition.sponsors.map((sponsor) => (
-                      <li
-                        key={sponsor}
-                        className="flex items-center gap-2 p-2 bg-green-50 rounded-lg"
-                      >
-                        <div className="w-2 h-2 bg-green-500 rounded-full" />
-                        <span className="text-sm">{sponsor}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {proposition.sponsors && proposition.sponsors.length > 0 ? (
+                    <ul className="space-y-2">
+                      {proposition.sponsors.map((sponsor) => (
+                        <li
+                          key={sponsor}
+                          className="flex items-center gap-2 p-2 bg-green-50 rounded-lg"
+                        >
+                          <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          <span className="text-sm">{sponsor}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No sponsor data available</p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -441,7 +447,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
                   <CardTitle>Opponents</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {proposition.opponents.length > 0 ? (
+                  {proposition.opponents && proposition.opponents.length > 0 ? (
                     <ul className="space-y-2">
                       {proposition.opponents.map((opponent) => (
                         <li
@@ -454,7 +460,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-gray-500">No official opposition recorded</p>
+                    <p className="text-sm text-gray-500">No opponent data available</p>
                   )}
                 </CardContent>
               </Card>

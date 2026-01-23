@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DistrictImpactDisplay } from '@/components/features';
 import {
   Card,
@@ -19,8 +19,10 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui';
-import { Map, Info } from 'lucide-react';
-import { PropositionImpact, CaliforniaRegion, CALIFORNIA_REGIONS } from '@/types';
+import { Map, Info, Calendar, FileText, Loader2 } from 'lucide-react';
+import { PropositionImpact, CaliforniaRegion, CALIFORNIA_REGIONS, Proposition, ApiResponse } from '@/types';
+
+const availableYears = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
 
 // Mock data for district impact
 const mockImpact: PropositionImpact = {
@@ -187,14 +189,41 @@ const mockImpact: PropositionImpact = {
   },
 };
 
-const mockPropositions = [
-  { id: 'prop-50', number: '50', title: 'Local Government Funding Amendment' },
-  { id: 'prop-1', number: '1', title: 'Affordable Housing Bond Act' },
-  { id: 'prop-36', number: '36', title: 'Criminal Sentencing Reform' },
-];
-
 export default function DistrictsPage() {
-  const [selectedProposition, setSelectedProposition] = useState<string>('prop-50');
+  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const [propositions, setPropositions] = useState<Proposition[]>([]);
+  const [selectedProposition, setSelectedProposition] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch propositions when year changes
+  useEffect(() => {
+    const fetchPropositions = async () => {
+      setIsLoading(true);
+      setError(null);
+      setPropositions([]);
+      setSelectedProposition('');
+
+      try {
+        const response = await fetch(`/api/propositions?year=${selectedYear}`);
+        const data: ApiResponse<Proposition[]> = await response.json();
+
+        if (data.success && data.data.length > 0) {
+          setPropositions(data.data);
+          setSelectedProposition(data.data[0].id);
+        } else {
+          setPropositions([]);
+          setError(`No propositions found for ${selectedYear}`);
+        }
+      } catch {
+        setError('Failed to fetch propositions');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPropositions();
+  }, [selectedYear]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -212,35 +241,95 @@ export default function DistrictsPage() {
         </div>
       </div>
 
-      {/* Proposition Selector */}
+      {/* Year and Proposition Selector */}
       <Card className="mb-8">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select a Proposition to Analyze
-              </label>
-              <Select value={selectedProposition} onValueChange={setSelectedProposition}>
-                <SelectTrigger className="w-full md:w-96">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockPropositions.map((prop) => (
-                    <SelectItem key={prop.id} value={prop.id}>
-                      Prop {prop.number}: {prop.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Year Selection */}
+              <div className="md:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Step 1: Select Year
+                </label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                        {year === '2026' && ' (Upcoming)'}
+                        {year === '2025' && ' (Special)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Proposition Selection */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileText className="inline h-4 w-4 mr-1" />
+                  Step 2: Select Proposition
+                </label>
+                <Select
+                  value={selectedProposition}
+                  onValueChange={setSelectedProposition}
+                  disabled={isLoading || propositions.length === 0}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={
+                      isLoading ? "Loading..." :
+                      propositions.length === 0 ? `No propositions for ${selectedYear}` :
+                      "Select a proposition"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {propositions.map((prop) => (
+                      <SelectItem key={prop.id} value={prop.id}>
+                        Prop {prop.number}: {prop.title.length > 50 ? prop.title.substring(0, 50) + '...' : prop.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="md:self-end flex items-center gap-2 text-sm text-gray-500">
+                <Info className="h-4 w-4" />
+                Based on voter registration data
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Info className="h-4 w-4" />
-              Analysis based on voter registration and historical patterns
-            </div>
+
+            {/* Year stats */}
+            {propositions.length > 0 && (
+              <div className="text-sm text-gray-500 pt-2 border-t">
+                {propositions.length} propositions found for {selectedYear}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <span className="ml-2 text-gray-600">Loading propositions...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Card className="mb-8 border-amber-200 bg-amber-50">
+          <CardContent className="py-4 text-center text-amber-700">
+            {error}. Try selecting a different year.
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && propositions.length > 0 && (
       <Tabs defaultValue="impact" className="space-y-6">
         <TabsList>
           <TabsTrigger value="impact">Impact Overview</TabsTrigger>
@@ -407,6 +496,7 @@ export default function DistrictsPage() {
           </div>
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }

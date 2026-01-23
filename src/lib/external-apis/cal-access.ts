@@ -4,7 +4,7 @@
  * Data source: https://cal-access.sos.ca.gov/
  */
 
-import { Committee, Donor, PropositionFinance } from '@/types';
+import { Donor, PropositionFinance } from '@/types';
 
 const CAL_ACCESS_BASE_URL = 'https://cal-access.sos.ca.gov';
 
@@ -256,7 +256,7 @@ class CalAccessClient {
   /**
    * Search for ballot measure by keywords
    */
-  async searchMeasures(query: string, year?: number): Promise<{ number: string; name: string; year: number }[]> {
+  async searchMeasures(_query: string, _year?: number): Promise<{ number: string; name: string; year: number }[]> {
     // This would search the Cal-Access database
     // For now, returns empty - would need proper API access
     return [];

@@ -30,7 +30,7 @@ const categories: { value: PropositionCategory | 'all'; label: string }[] = [
   { value: 'civil_rights', label: 'Civil Rights' },
 ];
 
-const years = ['all', '2024', '2022', '2020', '2018', '2016'];
+const years = ['all', '2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
 
 export default function PropositionsPage() {
   const [propositions, setPropositions] = useState<Proposition[]>([]);
@@ -40,7 +40,7 @@ export default function PropositionsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   // Fetch propositions from API
@@ -50,41 +50,63 @@ export default function PropositionsPage() {
       setError(null);
 
       try {
-        const params = new URLSearchParams();
-        if (selectedYear !== 'all') params.set('year', selectedYear);
+        let allPropositions: Proposition[] = [];
 
-        const response = await fetch(`/api/propositions?${params.toString()}`);
-        const data: ApiResponse<Proposition[]> = await response.json();
-
-        if (data.success) {
-          setPropositions(data.data);
-
-          // Fetch predictions for upcoming propositions
-          const upcoming = data.data.filter(p => p.status === 'upcoming');
-          const predictionPromises = upcoming.map(async (prop) => {
-            try {
-              const predResponse = await fetch(`/api/predictions/${prop.id}`);
-              const predData = await predResponse.json();
-              if (predData.success) {
-                return { id: prop.id, prediction: predData.data };
-              }
-            } catch {
-              // Ignore prediction errors
-            }
-            return null;
+        if (selectedYear === 'all') {
+          // Fetch from all years
+          const yearsToFetch = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
+          const fetchPromises = yearsToFetch.map(async (year) => {
+            const response = await fetch(`/api/propositions?year=${year}`);
+            const data: ApiResponse<Proposition[]> = await response.json();
+            return data.success ? data.data : [];
           });
 
-          const predResults = await Promise.all(predictionPromises);
-          const predMap: Record<string, PropositionPrediction> = {};
-          predResults.forEach(result => {
-            if (result) {
-              predMap[result.id] = result.prediction;
-            }
-          });
-          setPredictions(predMap);
+          const results = await Promise.all(fetchPromises);
+          allPropositions = results.flat();
         } else {
-          setError(data.error?.message || 'Failed to fetch propositions');
+          const response = await fetch(`/api/propositions?year=${selectedYear}`);
+          const data: ApiResponse<Proposition[]> = await response.json();
+
+          if (data.success) {
+            allPropositions = data.data;
+          } else {
+            setError(data.error?.message || 'Failed to fetch propositions');
+            setIsLoading(false);
+            return;
+          }
         }
+
+        // Sort by year (newest first) then by number
+        allPropositions.sort((a, b) => {
+          if (b.year !== a.year) return b.year - a.year;
+          return parseInt(a.number) - parseInt(b.number);
+        });
+
+        setPropositions(allPropositions);
+
+        // Fetch predictions for upcoming propositions
+        const upcoming = allPropositions.filter(p => p.status === 'upcoming');
+        const predictionPromises = upcoming.map(async (prop) => {
+          try {
+            const predResponse = await fetch(`/api/predictions/${prop.id}`);
+            const predData = await predResponse.json();
+            if (predData.success) {
+              return { id: prop.id, prediction: predData.data };
+            }
+          } catch {
+            // Ignore prediction errors
+          }
+          return null;
+        });
+
+        const predResults = await Promise.all(predictionPromises);
+        const predMap: Record<string, PropositionPrediction> = {};
+        predResults.forEach(result => {
+          if (result) {
+            predMap[result.id] = result.prediction;
+          }
+        });
+        setPredictions(predMap);
       } catch (err) {
         setError('Network error. Please try again.');
       } finally {

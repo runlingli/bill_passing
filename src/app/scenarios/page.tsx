@@ -16,32 +16,48 @@ import {
   SelectItem,
   Button,
 } from '@/components/ui';
-import { Zap, ArrowRight, TrendingUp, Clock, Trash2, Loader2 } from 'lucide-react';
+import { Zap, ArrowRight, TrendingUp, Clock, Trash2, Loader2, Calendar, FileText } from 'lucide-react';
 import { Scenario, Proposition, PropositionWithDetails, SCENARIO_PRESETS, ApiResponse } from '@/types';
 
+const availableYears = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
+
 export default function ScenariosPage() {
+  const [selectedYear, setSelectedYear] = useState<string>('2024');
   const [propositions, setPropositions] = useState<Proposition[]>([]);
   const [selectedProposition, setSelectedProposition] = useState<string>('');
   const [currentProposition, setCurrentProposition] = useState<PropositionWithDetails | null>(null);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch propositions from API
+  const handlePresetClick = (presetId: string) => {
+    setSelectedPreset(presetId);
+    // Reset after a short delay so it can be clicked again
+    setTimeout(() => setSelectedPreset(null), 100);
+  };
+
+  // Fetch propositions when year changes
   useEffect(() => {
     const fetchPropositions = async () => {
       setIsLoading(true);
+      setError(null);
+      setPropositions([]);
+      setSelectedProposition('');
+      setCurrentProposition(null);
+
       try {
-        const response = await fetch('/api/propositions?year=2024');
+        const response = await fetch(`/api/propositions?year=${selectedYear}`);
         const data: ApiResponse<Proposition[]> = await response.json();
 
         if (data.success && data.data.length > 0) {
           setPropositions(data.data);
           setSelectedProposition(data.data[0].id);
         } else {
-          setError('No propositions available');
+          setPropositions([]);
+          setError(`No propositions found for ${selectedYear}`);
         }
       } catch {
         setError('Failed to fetch propositions');
@@ -51,7 +67,7 @@ export default function ScenariosPage() {
     };
 
     fetchPropositions();
-  }, []);
+  }, [selectedYear]);
 
   // Fetch proposition details when selection changes
   useEffect(() => {
@@ -131,40 +147,84 @@ export default function ScenariosPage() {
         </Card>
       )}
 
-      {/* Proposition Selector */}
-      {!isLoading && propositions.length > 0 && (
+      {/* Year and Proposition Selector */}
+      {!isLoading && (
         <Card className="mb-8">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select a Proposition to Analyze
-                </label>
-                <Select value={selectedProposition} onValueChange={setSelectedProposition}>
-                  <SelectTrigger className="w-full md:w-96">
-                    <SelectValue placeholder="Select a proposition" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {propositions.map((prop) => (
-                      <SelectItem key={prop.id} value={prop.id}>
-                        Prop {prop.number}: {prop.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                {/* Year Selection */}
+                <div className="md:w-48">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Calendar className="inline h-4 w-4 mr-1" />
+                    Step 1: Select Year
+                  </label>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableYears.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                          {year === '2026' && ' (Upcoming)'}
+                          {year === '2025' && ' (Special)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Proposition Selection */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <FileText className="inline h-4 w-4 mr-1" />
+                    Step 2: Select Proposition
+                  </label>
+                  <Select
+                    value={selectedProposition}
+                    onValueChange={setSelectedProposition}
+                    disabled={propositions.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={
+                        propositions.length === 0
+                          ? `No propositions for ${selectedYear}`
+                          : "Select a proposition"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {propositions.map((prop) => (
+                        <SelectItem key={prop.id} value={prop.id}>
+                          Prop {prop.number}: {prop.title.length > 60 ? prop.title.substring(0, 60) + '...' : prop.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:self-end">
+                  <Link href={`/propositions/${selectedProposition}`}>
+                    <Button variant="outline" disabled={!selectedProposition}>
+                      View Details
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
-              <Link href={`/propositions/${selectedProposition}`}>
-                <Button variant="outline" disabled={!selectedProposition}>
-                  View Proposition Details
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+
+              {/* Year stats */}
+              {propositions.length > 0 && (
+                <div className="text-sm text-gray-500 pt-2 border-t">
+                  {propositions.length} propositions found for {selectedYear}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {!isLoading && propositions.length > 0 && (
+      {!isLoading && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scenario Builder */}
         <div className="lg:col-span-2">
@@ -179,6 +239,7 @@ export default function ScenariosPage() {
             <ScenarioBuilder
               proposition={currentProposition}
               onScenarioRun={handleScenarioRun}
+              presetId={selectedPreset}
             />
           ) : (
             <Card>
@@ -209,7 +270,9 @@ export default function ScenariosPage() {
                 {SCENARIO_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    onClick={() => handlePresetClick(preset.id)}
+                    disabled={!currentProposition}
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="font-medium text-sm">{preset.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{preset.description}</p>

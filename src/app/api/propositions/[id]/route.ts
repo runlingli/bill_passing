@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { propositionService } from '@/services';
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const dynamic = 'force-dynamic';
 
 interface RouteContext {
   params: { id: string };
