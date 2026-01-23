@@ -26,14 +26,24 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui';
-import { scenarioService } from '@/services';
+import { scenarioService, predictionService } from '@/services';
 import { Play, Save, RotateCcw, Zap } from 'lucide-react';
+
+export interface FactorWeights {
+  campaignFinance: number;
+  ballotWording: number;
+  demographics: number;
+  timing: number;
+  historical: number;
+  opposition: number;
+}
 
 interface ScenarioBuilderProps {
   proposition: PropositionWithDetails;
   onScenarioRun: (scenario: Scenario) => void;
   initialScenario?: Scenario;
   presetId?: string | null;
+  customWeights?: FactorWeights;
 }
 
 export function ScenarioBuilder({
@@ -41,6 +51,7 @@ export function ScenarioBuilder({
   onScenarioRun,
   initialScenario,
   presetId,
+  customWeights,
 }: ScenarioBuilderProps) {
   const [scenarioName, setScenarioName] = useState(initialScenario?.name || '');
   const [parameters, setParameters] = useState<ScenarioParameters>(
@@ -74,12 +85,30 @@ export function ScenarioBuilder({
   const handleRunScenario = useCallback(async () => {
     setIsRunning(true);
     try {
+      // Apply custom weights if provided
+      if (customWeights) {
+        predictionService.setWeights({
+          campaignFinance: customWeights.campaignFinance,
+          historicalSimilarity: customWeights.historical,
+          demographics: customWeights.demographics,
+          ballotWording: customWeights.ballotWording,
+          timing: customWeights.timing,
+          opposition: customWeights.opposition,
+        });
+      }
+
       const scenario = await scenarioService.create(
         proposition.id,
         parameters,
         scenarioName || undefined
       );
       const results = await scenarioService.run(scenario, proposition);
+
+      // Reset weights to default after running
+      if (customWeights) {
+        predictionService.resetWeights();
+      }
+
       // Attach results to scenario before passing to callback
       const scenarioWithResults = {
         ...scenario,
@@ -90,7 +119,7 @@ export function ScenarioBuilder({
     } finally {
       setIsRunning(false);
     }
-  }, [proposition, parameters, scenarioName, onScenarioRun]);
+  }, [proposition, parameters, scenarioName, onScenarioRun, customWeights]);
 
   const updateFunding = useCallback(
     (key: 'supportMultiplier' | 'oppositionMultiplier', value: number) => {
@@ -192,9 +221,32 @@ export function ScenarioBuilder({
                 showValue
                 formatValue={(v) => `${v}x`}
               />
-              <div className="text-sm text-gray-500">
-                Adjust funding multipliers relative to current campaign spending levels.
-                1x = current levels, 2x = doubled spending.
+
+              {/* Estimated Impact Display */}
+              <div className="p-3 bg-white border rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+                <div className="text-sm">
+                  {(() => {
+                    const supportRatio = parameters.funding.supportMultiplier /
+                      (parameters.funding.supportMultiplier + parameters.funding.oppositionMultiplier);
+                    const baseRatio = 0.5;
+                    const delta = (supportRatio - baseRatio) * 0.8 * 0.30; // 0.8 scaling, 30% weight
+                    const sign = delta >= 0 ? '+' : '';
+                    return (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">
+                          Support ratio: {(supportRatio * 100).toFixed(0)}%
+                        </span>
+                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {sign}{(delta * 100).toFixed(1)}% probability
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Formula: (Support% - 50%) × 0.8 × 30% weight
+                </p>
               </div>
             </div>
           </TabsContent>
@@ -224,6 +276,36 @@ export function ScenarioBuilder({
                   <Badge variant="success">High</Badge>
                   <p className="text-gray-500 mt-1">Presidential</p>
                 </div>
+              </div>
+
+              {/* Estimated Impact Display */}
+              <div className="p-3 bg-white border rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+                <div className="text-sm">
+                  {(() => {
+                    const multiplier = parameters.turnout.overallMultiplier;
+                    let delta = 0;
+                    if (multiplier > 1.0) {
+                      delta = (multiplier - 1.0) * 0.15 * 0.15; // 15% scaling, 15% weight
+                    } else {
+                      delta = -(1.0 - multiplier) * 0.1 * 0.15;
+                    }
+                    const sign = delta >= 0 ? '+' : '';
+                    return (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">
+                          Turnout: {(multiplier * 100).toFixed(0)}% of baseline
+                        </span>
+                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {sign}{(delta * 100).toFixed(1)}% probability
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Formula: (Turnout - 100%) × 15% scaling × 15% weight
+                </p>
               </div>
             </div>
           </TabsContent>
@@ -258,9 +340,39 @@ export function ScenarioBuilder({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="text-sm text-gray-500">
-                Simpler ballot language typically increases voter understanding and support
-                for well-intentioned measures.
+              {/* Estimated Impact Display */}
+              <div className="p-3 bg-white border rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+                <div className="text-sm">
+                  {(() => {
+                    // Sentiment impact: sentiment × 20% × 20% weight
+                    let delta = parameters.framing.titleSentiment * 0.20 * 0.20;
+
+                    // Complexity impact
+                    if (parameters.framing.summaryComplexity === 'simpler') {
+                      delta += 0.08 * 0.20; // +8% × 20% weight
+                    } else if (parameters.framing.summaryComplexity === 'complex') {
+                      delta -= 0.08 * 0.20;
+                    }
+
+                    const sign = delta >= 0 ? '+' : '';
+                    const sentimentLabel = parameters.framing.titleSentiment > 0 ? 'positive' :
+                                          parameters.framing.titleSentiment < 0 ? 'negative' : 'neutral';
+                    return (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">
+                          {sentimentLabel} framing, {parameters.framing.summaryComplexity} text
+                        </span>
+                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {sign}{(delta * 100).toFixed(1)}% probability
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Formula: (Sentiment × 20% + Complexity ±8%) × 20% weight
+                </p>
               </div>
             </div>
           </TabsContent>

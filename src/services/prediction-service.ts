@@ -376,11 +376,22 @@ class PredictionService {
     const modified = { ...proposition };
 
     // Apply funding changes
-    if (scenario.parameters.funding && modified.finance) {
+    if (scenario.parameters.funding) {
+      // Create default finance data if not present
+      const baseFinance = modified.finance || {
+        propositionId: modified.id,
+        totalSupport: 1_000_000,  // Default $1M baseline
+        totalOpposition: 1_000_000,
+        supportCommittees: [],
+        oppositionCommittees: [],
+        topDonors: [],
+        lastUpdated: new Date().toISOString(),
+      };
+
       modified.finance = {
-        ...modified.finance,
-        totalSupport: modified.finance.totalSupport * scenario.parameters.funding.supportMultiplier,
-        totalOpposition: modified.finance.totalOpposition * scenario.parameters.funding.oppositionMultiplier,
+        ...baseFinance,
+        totalSupport: baseFinance.totalSupport * scenario.parameters.funding.supportMultiplier,
+        totalOpposition: baseFinance.totalOpposition * scenario.parameters.funding.oppositionMultiplier,
       };
     }
 

@@ -190,7 +190,7 @@ const mockImpact: PropositionImpact = {
 };
 
 export default function DistrictsPage() {
-  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const [selectedYear, setSelectedYear] = useState<string>('2025');
   const [propositions, setPropositions] = useState<Proposition[]>([]);
   const [selectedProposition, setSelectedProposition] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
