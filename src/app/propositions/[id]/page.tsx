@@ -23,170 +23,14 @@ import {
   TrendingUp,
   DollarSign,
   Zap,
+  Loader2,
 } from 'lucide-react';
 import {
   PropositionWithDetails,
   Scenario,
+  ApiResponse,
 } from '@/types';
-import { useState } from 'react';
-
-// Mock data
-const getMockProposition = (id: string): PropositionWithDetails => ({
-  id,
-  number: '50',
-  year: 2024,
-  electionDate: '2024-11-05',
-  title: 'Local Government Funding Amendment',
-  summary:
-    'Reduces the voter approval threshold for local bonds and special taxes from two-thirds to 55% for affordable housing, public infrastructure, and public hospitals.',
-  fullText:
-    'This proposition amends the California Constitution to lower the voter approval requirement for local government general obligation bonds and special taxes from two-thirds (66.67%) to 55% for projects related to affordable housing construction, public infrastructure improvements, and public hospital facilities. The measure would also require additional reporting and accountability measures for projects funded under this reduced threshold.',
-  status: 'upcoming',
-  category: 'government',
-  sponsors: [
-    'California League of Cities',
-    'California State Association of Counties',
-    'California Housing Consortium',
-  ],
-  opponents: [
-    'Howard Jarvis Taxpayers Association',
-    'California Business Properties Association',
-  ],
-  finance: {
-    propositionId: id,
-    totalSupport: 15_234_567,
-    totalOpposition: 8_765_432,
-    supportCommittees: [
-      {
-        id: 'c1',
-        name: 'Yes on 50 - Californians for Local Control',
-        position: 'support',
-        totalRaised: 12_500_000,
-        totalSpent: 9_800_000,
-      },
-      {
-        id: 'c2',
-        name: 'Housing Now Coalition',
-        position: 'support',
-        totalRaised: 2_734_567,
-        totalSpent: 2_100_000,
-      },
-    ],
-    oppositionCommittees: [
-      {
-        id: 'c3',
-        name: 'No on 50 - Protect Taxpayer Rights',
-        position: 'opposition',
-        totalRaised: 7_500_000,
-        totalSpent: 6_200_000,
-      },
-      {
-        id: 'c4',
-        name: 'California Taxpayers United',
-        position: 'opposition',
-        totalRaised: 1_265_432,
-        totalSpent: 980_000,
-      },
-    ],
-    topDonors: [
-      { name: 'CA Realtors Association', amount: 5_000_000, position: 'support', type: 'organization' },
-      { name: 'Building Industry Association', amount: 3_200_000, position: 'support', type: 'organization' },
-      { name: 'Howard Jarvis Taxpayers Assn', amount: 2_500_000, position: 'opposition', type: 'organization' },
-      { name: 'Service Employees International Union', amount: 1_800_000, position: 'support', type: 'organization' },
-      { name: 'CA Chamber of Commerce', amount: 1_500_000, position: 'opposition', type: 'organization' },
-      { name: 'Individual: John Smith', amount: 500_000, position: 'support', type: 'individual' },
-      { name: 'CA Hospital Association', amount: 450_000, position: 'support', type: 'organization' },
-    ],
-    lastUpdated: new Date().toISOString(),
-  },
-  prediction: {
-    propositionId: id,
-    passageProbability: 0.38,
-    confidence: 0.72,
-    factors: [
-      {
-        name: 'campaignFinance',
-        weight: 0.25,
-        value: 0.64,
-        impact: 'positive',
-        description: 'Support spending outpaces opposition by 42.5%',
-      },
-      {
-        name: 'demographics',
-        weight: 0.2,
-        value: 0.52,
-        impact: 'neutral',
-        description: 'Demographic projections show 52.0% support',
-      },
-      {
-        name: 'ballotWording',
-        weight: 0.15,
-        value: 0.45,
-        impact: 'negative',
-        description: 'Ballot language is moderate with neutral framing',
-      },
-      {
-        name: 'timing',
-        weight: 0.1,
-        value: 0.55,
-        impact: 'positive',
-        description: 'November election in presidential year',
-      },
-      {
-        name: 'opposition',
-        weight: 0.1,
-        value: 0.35,
-        impact: 'negative',
-        description: '2 organized opposition groups',
-      },
-    ],
-    historicalComparison: [
-      {
-        propositionId: 'h1',
-        propositionNumber: '39',
-        year: 2012,
-        similarity: 0.78,
-        result: 'passed',
-        yesPercentage: 55.1,
-      },
-      {
-        propositionId: 'h2',
-        propositionNumber: '30',
-        year: 2012,
-        similarity: 0.72,
-        result: 'passed',
-        yesPercentage: 55.4,
-      },
-      {
-        propositionId: 'h3',
-        propositionNumber: '13',
-        year: 2020,
-        similarity: 0.65,
-        result: 'failed',
-        yesPercentage: 48.4,
-      },
-    ],
-    generatedAt: new Date().toISOString(),
-  },
-  ballotAnalysis: {
-    propositionId: id,
-    wordCount: 342,
-    readabilityScore: 45,
-    sentimentScore: 0.1,
-    complexity: 'moderate',
-    keyPhrases: [
-      'voter approval threshold',
-      'two-thirds',
-      'affordable housing',
-      'public infrastructure',
-      'general obligation bonds',
-    ],
-    comparisonToSimilar: {
-      avgWordCount: 298,
-      avgReadability: 52,
-    },
-  },
-});
+import { useState, useEffect } from 'react';
 
 interface PageProps {
   params: { id: string };
@@ -194,12 +38,63 @@ interface PageProps {
 
 export default function PropositionDetailPage({ params }: PageProps) {
   const { id } = params;
-  const proposition = getMockProposition(id);
+  const [proposition, setProposition] = useState<PropositionWithDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [scenarioResults, setScenarioResults] = useState<Scenario | null>(null);
+
+  useEffect(() => {
+    const fetchProposition = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/propositions/${id}`);
+        const data: ApiResponse<PropositionWithDetails> = await response.json();
+        if (data.success) {
+          setProposition(data.data);
+        } else {
+          setError(data.error?.message || 'Failed to fetch proposition');
+        }
+      } catch {
+        setError('Network error. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProposition();
+  }, [id]);
 
   const handleScenarioRun = (scenario: Scenario) => {
     setScenarioResults(scenario);
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="ml-2 text-gray-600">Loading proposition...</span>
+      </div>
+    );
+  }
+
+  if (error || !proposition) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Link
+          href="/propositions"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Propositions
+        </Link>
+        <Card>
+          <CardContent className="py-12 text-center text-red-600">
+            {error || 'Proposition not found.'}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
