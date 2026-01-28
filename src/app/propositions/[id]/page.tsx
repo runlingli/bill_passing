@@ -199,6 +199,58 @@ export default function PropositionDetailPage({ params }: PageProps) {
         )}
       </div>
 
+      {/* Election Results */}
+      {proposition.result && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge variant={proposition.result.passed ? 'success' : 'error'}>
+                {proposition.result.passed ? 'Passed' : 'Failed'}
+              </Badge>
+              Election Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="font-medium text-green-700">
+                  Yes — {proposition.result.yesPercentage}%
+                </span>
+                <span className="font-medium text-red-700">
+                  No — {proposition.result.noPercentage}%
+                </span>
+              </div>
+              <div className="h-4 bg-red-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-l-full"
+                  style={{ width: `${proposition.result.yesPercentage}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-2">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-lg font-bold text-green-700">
+                    {proposition.result.yesVotes.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">Yes Votes</p>
+                </div>
+                <div className="text-center p-3 bg-red-50 rounded-lg">
+                  <p className="text-lg font-bold text-red-700">
+                    {proposition.result.noVotes.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">No Votes</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-bold text-gray-900">
+                    {proposition.result.totalVotes.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">Total Votes</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content Tabs */}
       <Tabs defaultValue="prediction" className="space-y-6">
         <TabsList className="w-full justify-start">

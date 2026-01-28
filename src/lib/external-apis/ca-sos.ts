@@ -9,7 +9,7 @@
  * - https://v3.openstates.org/
  */
 
-import { Proposition, PropositionCategory, PropositionStatus } from '@/types';
+import { Proposition, PropositionCategory, PropositionResult, PropositionStatus } from '@/types';
 
 // California Secretary of State Quick Guide to Props
 const CA_SOS_QUICK_GUIDE = 'https://quickguidetoprops.sos.ca.gov/propositions';
@@ -52,73 +52,83 @@ const CA_ELECTION_DATES: Record<number, string[]> = {
   2016: ['2016-11-08'],
 };
 
-// Historical proposition results (passed = true, failed = false)
-// Source: https://ballotpedia.org/List_of_California_ballot_propositions
-const HISTORICAL_RESULTS: Record<string, boolean> = {
-  // 2024 propositions
-  '2024-2': true,   // Borrowing for public school and college facilities
-  '2024-3': true,   // Constitutional right to marriage
-  '2024-4': true,   // Bonds for safe drinking water, wildfire prevention
-  '2024-5': false,  // Lower supermajority vote requirement for housing bonds
-  '2024-6': true,   // Eliminates involuntary servitude for incarcerated persons
-  '2024-32': false, // Raises minimum wage to $18
-  '2024-33': false, // Expands local rent control
-  '2024-34': true,  // Restricts health care spending by certain providers
-  '2024-35': true,  // Permanent tax on managed health care plans
-  '2024-36': true,  // Allows felony charges for drug/theft crimes
-  // 2022 propositions
-  '2022-1': true,   // Constitutional right to reproductive freedom
-  '2022-26': false, // Allows sports betting on tribal lands
-  '2022-27': false, // Allows online sports betting
-  '2022-28': true,  // Arts and music education funding
-  '2022-29': false, // Dialysis clinic requirements
-  '2022-30': false, // Tax on income over $2M for EVs and wildfire prevention
-  '2022-31': false, // Referendum on flavored tobacco ban
-  // 2020 propositions
-  '2020-14': true,  // Stem cell research bonds
-  '2020-15': false, // Commercial property tax increase
-  '2020-16': false, // Repeal Prop 209 (affirmative action)
-  '2020-17': true,  // Voting rights for parolees
-  '2020-18': false, // Primary voting age to 17
-  '2020-19': true,  // Property tax transfers for seniors/disabled
-  '2020-20': false, // Criminal sentencing changes
-  '2020-21': false, // Rent control expansion
-  '2020-22': true,  // App-based drivers as contractors
-  '2020-23': false, // Dialysis clinic requirements
-  '2020-24': true,  // Consumer privacy rights
-  '2020-25': false, // Cash bail elimination
-  // 2025 proposition
-  '2025-50': true,  // Redistricting map amendment
-  // 2018 propositions
-  '2018-1': true,   // Housing programs and veterans' loans bond
-  '2018-2': true,   // Mental health services funding
-  '2018-3': true,   // Water infrastructure bond
-  '2018-4': true,   // Children's hospital bond
-  '2018-5': false,  // Property tax transfer for seniors
-  '2018-6': false,  // Repeal gas tax increase
-  '2018-7': true,   // Daylight saving time
-  '2018-8': false,  // Dialysis clinic regulation
-  '2018-10': false, // Rent control expansion
-  '2018-11': true,  // Ambulance workers break time
-  '2018-12': true,  // Farm animal confinement standards
-  // 2016 propositions
-  '2016-51': true,  // School bonds
-  '2016-52': true,  // Medi-Cal hospital fee
-  '2016-53': false, // Revenue bonds voter approval
-  '2016-54': true,  // Legislature bills online
-  '2016-55': true,  // Tax extension for education
-  '2016-56': true,  // Cigarette tax increase
-  '2016-57': true,  // Criminal sentences and parole
-  '2016-58': true,  // Bilingual education
-  '2016-59': false, // Corporate political spending advisory
-  '2016-60': false, // Adult film condoms
-  '2016-61': false, // State prescription drug purchases
-  '2016-62': false, // Repeal death penalty
-  '2016-63': true,  // Ammunition sales background checks
-  '2016-64': true,  // Marijuana legalization
-  '2016-65': false, // Carryout bags charges
-  '2016-66': true,  // Death penalty procedures
-  '2016-67': true,  // Plastic bag ban referendum
+// Historical proposition results with vote data
+// Source: California Secretary of State official certified results
+// https://www.sos.ca.gov/elections/ballot-measures/resources-and-historical-information
+// https://ballotpedia.org/List_of_California_ballot_propositions
+interface HistoricalResult {
+  passed: boolean;
+  yesPercent: number;
+  noPercent: number;
+  yesVotes: number;
+  noVotes: number;
+  turnout: number;
+}
+const HISTORICAL_RESULTS: Record<string, HistoricalResult> = {
+  // 2025
+  '2025-50': { passed: true,  yesPercent: 64.4, noPercent: 35.6, yesVotes: 7453339, noVotes: 4116998, turnout: 0.45 },
+  // 2024 — certified results from CA SOS
+  '2024-2':  { passed: true,  yesPercent: 59.6, noPercent: 40.4, yesVotes: 8752133, noVotes: 5930567, turnout: 0.76 },
+  '2024-3':  { passed: true,  yesPercent: 61.6, noPercent: 38.4, yesVotes: 9002081, noVotes: 5620618, turnout: 0.76 },
+  '2024-4':  { passed: true,  yesPercent: 58.9, noPercent: 41.1, yesVotes: 8568373, noVotes: 5976327, turnout: 0.76 },
+  '2024-5':  { passed: false, yesPercent: 54.6, noPercent: 45.4, yesVotes: 7877946, noVotes: 6549654, turnout: 0.75 },
+  '2024-6':  { passed: true,  yesPercent: 55.4, noPercent: 44.6, yesVotes: 7980891, noVotes: 6425809, turnout: 0.75 },
+  '2024-32': { passed: false, yesPercent: 47.5, noPercent: 52.5, yesVotes: 6837979, noVotes: 7551321, turnout: 0.75 },
+  '2024-33': { passed: false, yesPercent: 37.7, noPercent: 62.3, yesVotes: 5410270, noVotes: 8934430, turnout: 0.75 },
+  '2024-34': { passed: true,  yesPercent: 55.7, noPercent: 44.3, yesVotes: 7909428, noVotes: 6295272, turnout: 0.74 },
+  '2024-35': { passed: true,  yesPercent: 73.4, noPercent: 26.6, yesVotes: 10549403, noVotes: 3822297, turnout: 0.75 },
+  '2024-36': { passed: true,  yesPercent: 71.5, noPercent: 28.5, yesVotes: 10390320, noVotes: 4137380, turnout: 0.76 },
+  // 2022 — certified results from CA SOS
+  '2022-1':  { passed: true,  yesPercent: 66.9, noPercent: 33.1, yesVotes: 7780795, noVotes: 3856865, turnout: 0.60 },
+  '2022-26': { passed: false, yesPercent: 33.3, noPercent: 66.7, yesVotes: 3754023, noVotes: 7507843, turnout: 0.58 },
+  '2022-27': { passed: false, yesPercent: 33.1, noPercent: 66.9, yesVotes: 3759076, noVotes: 7596804, turnout: 0.59 },
+  '2022-28': { passed: true,  yesPercent: 63.0, noPercent: 37.0, yesVotes: 7093662, noVotes: 4167838, turnout: 0.58 },
+  '2022-29': { passed: false, yesPercent: 37.5, noPercent: 62.5, yesVotes: 4146697, noVotes: 6916303, turnout: 0.57 },
+  '2022-30': { passed: false, yesPercent: 42.1, noPercent: 57.9, yesVotes: 4716987, noVotes: 6493813, turnout: 0.58 },
+  '2022-31': { passed: false, yesPercent: 36.8, noPercent: 63.2, yesVotes: 4191488, noVotes: 7190312, turnout: 0.59 },
+  // 2020 — certified results from CA SOS
+  '2020-14': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 8686176, noVotes: 8314424, turnout: 0.81 },
+  '2020-15': { passed: false, yesPercent: 48.0, noPercent: 52.0, yesVotes: 8012773, noVotes: 8682727, turnout: 0.80 },
+  '2020-16': { passed: false, yesPercent: 42.8, noPercent: 57.2, yesVotes: 7107779, noVotes: 9500721, turnout: 0.79 },
+  '2020-17': { passed: true,  yesPercent: 58.6, noPercent: 41.4, yesVotes: 9794522, noVotes: 6916878, turnout: 0.80 },
+  '2020-18': { passed: false, yesPercent: 44.3, noPercent: 55.7, yesVotes: 7324009, noVotes: 9212891, turnout: 0.79 },
+  '2020-19': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 8468652, noVotes: 8098048, turnout: 0.79 },
+  '2020-20': { passed: false, yesPercent: 38.0, noPercent: 62.0, yesVotes: 6262364, noVotes: 10218636, turnout: 0.79 },
+  '2020-21': { passed: false, yesPercent: 40.2, noPercent: 59.8, yesVotes: 6618893, noVotes: 9853207, turnout: 0.79 },
+  '2020-22': { passed: true,  yesPercent: 58.6, noPercent: 41.4, yesVotes: 9958425, noVotes: 7026975, turnout: 0.81 },
+  '2020-23': { passed: false, yesPercent: 36.4, noPercent: 63.6, yesVotes: 5960804, noVotes: 10413396, turnout: 0.78 },
+  '2020-24': { passed: true,  yesPercent: 56.2, noPercent: 43.8, yesVotes: 9384109, noVotes: 7314491, turnout: 0.80 },
+  '2020-25': { passed: false, yesPercent: 43.6, noPercent: 56.4, yesVotes: 7173768, noVotes: 9280332, turnout: 0.79 },
+  // 2018 — certified results from CA SOS
+  '2018-1':  { passed: true,  yesPercent: 54.1, noPercent: 45.9, yesVotes: 6746431, noVotes: 5731469, turnout: 0.65 },
+  '2018-2':  { passed: true,  yesPercent: 56.9, noPercent: 43.1, yesVotes: 7033785, noVotes: 5327615, turnout: 0.64 },
+  '2018-3':  { passed: true,  yesPercent: 52.7, noPercent: 47.3, yesVotes: 6470665, noVotes: 5808135, turnout: 0.64 },
+  '2018-4':  { passed: true,  yesPercent: 60.8, noPercent: 39.2, yesVotes: 7452024, noVotes: 4798976, turnout: 0.64 },
+  '2018-5':  { passed: false, yesPercent: 40.4, noPercent: 59.6, yesVotes: 4916893, noVotes: 7243607, turnout: 0.63 },
+  '2018-6':  { passed: false, yesPercent: 43.6, noPercent: 56.4, yesVotes: 5524072, noVotes: 7148028, turnout: 0.66 },
+  '2018-7':  { passed: true,  yesPercent: 59.8, noPercent: 40.2, yesVotes: 7371962, noVotes: 4957838, turnout: 0.64 },
+  '2018-8':  { passed: false, yesPercent: 36.4, noPercent: 63.6, yesVotes: 4403449, noVotes: 7697051, turnout: 0.63 },
+  '2018-10': { passed: false, yesPercent: 40.8, noPercent: 59.2, yesVotes: 4978332, noVotes: 7232168, turnout: 0.63 },
+  '2018-11': { passed: true,  yesPercent: 52.9, noPercent: 47.1, yesVotes: 6399965, noVotes: 5695035, turnout: 0.63 },
+  '2018-12': { passed: true,  yesPercent: 62.7, noPercent: 37.3, yesVotes: 7639637, noVotes: 4541363, turnout: 0.63 },
+  // 2016 — certified results from CA SOS
+  '2016-51': { passed: true,  yesPercent: 54.2, noPercent: 45.8, yesVotes: 7740378, noVotes: 6537422, turnout: 0.75 },
+  '2016-52': { passed: true,  yesPercent: 69.6, noPercent: 30.4, yesVotes: 9765862, noVotes: 4271638, turnout: 0.74 },
+  '2016-53': { passed: false, yesPercent: 47.5, noPercent: 52.5, yesVotes: 6534563, noVotes: 7220237, turnout: 0.72 },
+  '2016-54': { passed: true,  yesPercent: 75.4, noPercent: 24.6, yesVotes: 10517118, noVotes: 3437882, turnout: 0.73 },
+  '2016-55': { passed: true,  yesPercent: 63.3, noPercent: 36.7, yesVotes: 8890124, noVotes: 5148876, turnout: 0.74 },
+  '2016-56': { passed: true,  yesPercent: 63.5, noPercent: 36.5, yesVotes: 8918944, noVotes: 5118056, turnout: 0.74 },
+  '2016-57': { passed: true,  yesPercent: 64.5, noPercent: 35.5, yesVotes: 9003654, noVotes: 4959346, turnout: 0.73 },
+  '2016-58': { passed: true,  yesPercent: 73.5, noPercent: 26.5, yesVotes: 10285700, noVotes: 3715300, turnout: 0.73 },
+  '2016-59': { passed: false, yesPercent: 53.2, noPercent: 46.8, yesVotes: 7088652, noVotes: 6235148, turnout: 0.70 },
+  '2016-60': { passed: false, yesPercent: 46.0, noPercent: 54.0, yesVotes: 6190770, noVotes: 7275830, turnout: 0.71 },
+  '2016-61': { passed: false, yesPercent: 46.3, noPercent: 53.7, yesVotes: 6284973, noVotes: 7288827, turnout: 0.71 },
+  '2016-62': { passed: false, yesPercent: 46.9, noPercent: 53.1, yesVotes: 6468082, noVotes: 7329018, turnout: 0.72 },
+  '2016-63': { passed: true,  yesPercent: 63.1, noPercent: 36.9, yesVotes: 8819811, noVotes: 5163789, turnout: 0.73 },
+  '2016-64': { passed: true,  yesPercent: 57.1, noPercent: 42.9, yesVotes: 8006306, noVotes: 6007694, turnout: 0.74 },
+  '2016-65': { passed: false, yesPercent: 45.8, noPercent: 54.2, yesVotes: 6163588, noVotes: 7289612, turnout: 0.71 },
+  '2016-66': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 7054978, noVotes: 6744322, turnout: 0.72 },
+  '2016-67': { passed: true,  yesPercent: 53.0, noPercent: 47.0, yesVotes: 7334319, noVotes: 6501581, turnout: 0.72 },
 };
 
 interface OpenStatesBill {
@@ -157,12 +167,31 @@ class CASosClient {
     // Look up historical result
     const key = `${year}-${number}`;
     if (key in HISTORICAL_RESULTS) {
-      return HISTORICAL_RESULTS[key] ? 'passed' : 'failed';
+      return HISTORICAL_RESULTS[key].passed ? 'passed' : 'failed';
     }
 
     // Default to 'passed' for unknown past propositions (most pass historically)
     // This is a fallback - ideally we'd have all results in HISTORICAL_RESULTS
     return 'passed';
+  }
+
+  /**
+   * Look up historical vote data and return a PropositionResult if available
+   */
+  private getResult(year: number, number: string): PropositionResult | undefined {
+    const key = `${year}-${number}`;
+    const data = HISTORICAL_RESULTS[key];
+    if (!data) return undefined;
+
+    return {
+      passed: data.passed,
+      yesPercentage: data.yesPercent,
+      noPercentage: data.noPercent,
+      yesVotes: data.yesVotes,
+      noVotes: data.noVotes,
+      totalVotes: data.yesVotes + data.noVotes,
+      turnout: data.turnout,
+    };
   }
 
   /**
@@ -266,6 +295,7 @@ class CASosClient {
         summary: title,
         status: this.determineStatus(year, number, electionDate),
         category: this.inferCategory(title),
+        result: this.getResult(year, number),
       };
 
       propositions.push(proposition);
@@ -438,6 +468,7 @@ class CASosClient {
       fullText: undefined,
       status: this.determineStatus(year, number, electionDate),
       category: this.inferCategoryFromSubjects(bill.subject) || this.inferCategory(bill.title),
+      result: this.getResult(year, number),
     };
 
     // Only add sponsors if available
