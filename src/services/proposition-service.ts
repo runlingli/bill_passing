@@ -260,10 +260,12 @@ class PropositionService {
     if (cached) return cached;
 
     const finance = await calAccessClient.getMeasureFinance(measureNumber, year);
-    if (finance) {
+    if (finance && (finance.supportCommittees.length > 0 || finance.oppositionCommittees.length > 0)) {
       this.setCache(cacheKey, finance);
+      return finance;
     }
-    return finance;
+
+    return null;
   }
 
   private async getBallotAnalysis(proposition: Proposition): Promise<BallotWordingAnalysis | null> {

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import {
   PropositionWithDetails,
+  PropositionPrediction,
   Scenario,
   ApiResponse,
 } from '@/types';
@@ -44,24 +45,42 @@ export default function PropositionDetailPage({ params }: PageProps) {
   const [scenarioResults, setScenarioResults] = useState<Scenario | null>(null);
 
   useEffect(() => {
-    const fetchProposition = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/propositions/${id}`);
-        const data: ApiResponse<PropositionWithDetails> = await response.json();
-        if (data.success) {
-          setProposition(data.data);
-        } else {
-          setError(data.error?.message || 'Failed to fetch proposition');
+        // Fetch proposition details and prediction in parallel
+        const [propResponse, predResponse] = await Promise.all([
+          fetch(`/api/propositions/${id}`),
+          fetch(`/api/predictions/${id}`),
+        ]);
+
+        const propData: ApiResponse<PropositionWithDetails> = await propResponse.json();
+        if (!propData.success) {
+          setError(propData.error?.message || 'Failed to fetch proposition');
+          return;
         }
+
+        const prop = propData.data;
+
+        // Attach prediction if available
+        try {
+          const predData: ApiResponse<PropositionPrediction> = await predResponse.json();
+          if (predData.success) {
+            prop.prediction = predData.data;
+          }
+        } catch {
+          // Prediction fetch failed, continue without it
+        }
+
+        setProposition(prop);
       } catch {
         setError('Network error. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchProposition();
+    fetchData();
   }, [id]);
 
   const handleScenarioRun = (scenario: Scenario) => {

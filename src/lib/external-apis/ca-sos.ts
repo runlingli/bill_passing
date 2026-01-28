@@ -121,65 +121,6 @@ const HISTORICAL_RESULTS: Record<string, boolean> = {
   '2016-67': true,  // Plastic bag ban referendum
 };
 
-// Real proposition data from CA Secretary of State and Ballotpedia
-// Source: https://www.sos.ca.gov/elections/ballot-measures/qualified-ballot-measures
-// Source: https://ballotpedia.org/California_2026_ballot_propositions
-const KNOWN_PROPOSITIONS: Record<number, Proposition[]> = {
-  2026: [
-    {
-      id: '2026-1',
-      number: '1',
-      year: 2026,
-      electionDate: '2026-11-03',
-      title: 'Allow Public Financing of Election Campaigns',
-      summary: 'Allow the state and local governments to create programs that provide candidates with public funds under spending limits and eligibility rules. Also known as the California Fair Elections Act of 2026.',
-      status: 'upcoming',
-      category: 'government',
-    },
-    {
-      id: '2026-2',
-      number: '2',
-      year: 2026,
-      electionDate: '2026-11-03',
-      title: 'Eliminate Successor Election at State Officer Recall',
-      summary: 'Eliminate the successor election when a state officer is recalled, thereby leaving the office vacant until it is filled according to state law.',
-      status: 'upcoming',
-      category: 'government',
-    },
-    {
-      id: '2026-3',
-      number: '3',
-      year: 2026,
-      electionDate: '2026-11-03',
-      title: 'Vote Requirements for Initiatives Requiring Supermajority Votes',
-      summary: 'Require initiatives that change vote thresholds to supermajority votes to pass by the same vote requirement as is being proposed.',
-      status: 'upcoming',
-      category: 'government',
-    },
-  ],
-  2025: [
-    {
-      id: '2025-50',
-      number: '50',
-      year: 2025,
-      electionDate: '2025-11-04',
-      title: 'Use of Legislative Congressional Redistricting Map Amendment',
-      summary: 'Allow the state to use a new, legislature-drawn congressional district map for 2026 through 2030.',
-      status: 'passed',
-      category: 'government',
-      result: {
-        passed: true,
-        yesVotes: 7453339,
-        noVotes: 4116998,
-        yesPercentage: 64,
-        noPercentage: 36,
-        totalVotes: 11570337,
-        turnout: 0.45,
-      },
-    },
-  ],
-};
-
 interface OpenStatesBill {
   id: string;
   identifier: string;
@@ -246,12 +187,6 @@ class CASosClient {
     if (propositions.length > 0) {
       console.log(`[CA-SOS] Found ${propositions.length} propositions from Open States API`);
       return propositions;
-    }
-
-    // Use known propositions data as final fallback (real data from CA SOS/Ballotpedia)
-    if (KNOWN_PROPOSITIONS[year]) {
-      console.log(`[CA-SOS] Using known propositions data for year ${year}`);
-      return KNOWN_PROPOSITIONS[year];
     }
 
     console.log(`[CA-SOS] No propositions found for year ${year} from any source`);
