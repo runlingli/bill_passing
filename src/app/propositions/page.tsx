@@ -13,7 +13,7 @@ import {
   SelectItem,
   Badge,
 } from '@/components/ui';
-import { Search, Filter, Calendar, Loader2 } from 'lucide-react';
+import { Search, Filter, Calendar, Loader2, BarChart3, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import { Proposition, PropositionPrediction, PropositionCategory, ApiResponse } from '@/types';
 
 const categories: { value: PropositionCategory | 'all'; label: string }[] = [
@@ -139,170 +139,187 @@ export default function PropositionsPage() {
   const failedCount = filteredPropositions.filter((p) => p.status === 'failed').length;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          California Propositions
-        </h1>
-        <p className="text-gray-600">
-          Browse and analyze statewide ballot propositions with prediction data
-        </p>
-      </div>
+    <div className="animate-fade-in bg-white">
+      {/* Header Section */}
+      <section className="bg-white py-12 border-b-4 border-blue-900">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl">
+            <Badge className="mb-4 bg-blue-900 text-white border-0 px-4 py-1 text-sm font-semibold">
+              Ballot Measures Database
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              California Propositions
+            </h1>
+            <p className="text-xl text-gray-700 leading-relaxed">
+              Browse and analyze statewide ballot propositions with prediction data,
+              campaign finance tracking, and historical voting patterns.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary-600">
+      <section className="py-8 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white border-2 border-gray-200 rounded p-6">
+              <div className="flex items-center justify-center mb-3">
+                <BarChart3 className="h-6 w-6 text-blue-900" />
+              </div>
+              <p className="text-3xl font-bold text-gray-900 text-center">
                 {isLoading ? '-' : filteredPropositions.length}
               </p>
-              <p className="text-sm text-gray-500">Total Propositions</p>
+              <p className="text-sm text-gray-600 text-center mt-1">Total Propositions</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-blue-600">
+            <div className="bg-white border-2 border-gray-200 rounded p-6">
+              <div className="flex items-center justify-center mb-3">
+                <TrendingUp className="h-6 w-6 text-blue-900" />
+              </div>
+              <p className="text-3xl font-bold text-blue-900 text-center">
                 {isLoading ? '-' : upcomingCount}
               </p>
-              <p className="text-sm text-gray-500">Upcoming</p>
+              <p className="text-sm text-gray-600 text-center mt-1">Upcoming</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-green-600">
+            <div className="bg-white border-2 border-gray-200 rounded p-6">
+              <div className="flex items-center justify-center mb-3">
+                <CheckCircle className="h-6 w-6 text-green-700" />
+              </div>
+              <p className="text-3xl font-bold text-green-700 text-center">
                 {isLoading ? '-' : passedCount}
               </p>
-              <p className="text-sm text-gray-500">Passed</p>
+              <p className="text-sm text-gray-600 text-center mt-1">Passed</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-red-600">
+            <div className="bg-white border-2 border-gray-200 rounded p-6">
+              <div className="flex items-center justify-center mb-3">
+                <XCircle className="h-6 w-6 text-red-700" />
+              </div>
+              <p className="text-3xl font-bold text-red-700 text-center">
                 {isLoading ? '-' : failedCount}
               </p>
-              <p className="text-sm text-gray-500">Failed</p>
+              <p className="text-sm text-gray-600 text-center mt-1">Failed</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card className="mb-8">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search propositions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full md:w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-full md:w-32">
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>
-                    {year === 'all' ? 'All Years' : year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-full md:w-36">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="upcoming">Upcoming</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="passed">Passed</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Error State */}
-      {error && (
-        <Card className="mb-8 border-red-200 bg-red-50">
-          <CardContent className="py-4 text-center text-red-600">
-            {error}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <span className="ml-2 text-gray-600">Loading propositions...</span>
         </div>
-      ) : (
-        <>
-          {/* Results */}
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              Showing {filteredPropositions.length} propositions
-            </p>
-            {filteredPropositions.length > 0 && (
-              <div className="flex gap-2">
-                <Badge variant="info">{upcomingCount} upcoming</Badge>
-                <Badge variant="success">{passedCount} passed</Badge>
-              </div>
-            )}
-          </div>
+      </section>
 
-          {filteredPropositions.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-gray-500">No propositions found matching your criteria.</p>
+      {/* Filters & Content */}
+      <section className="py-8 bg-white">
+        <div className="container mx-auto px-4">
+          {/* Filters */}
+          <Card className="mb-8 border-2 border-gray-200">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search propositions..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 border-2 border-gray-200 focus:border-blue-900"
+                    />
+                  </div>
+                </div>
+
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full md:w-48 border-2 border-gray-200">
+                    <Filter className="h-4 w-4 mr-2 text-blue-900" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full md:w-32 border-2 border-gray-200">
+                    <Calendar className="h-4 w-4 mr-2 text-blue-900" />
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year === 'all' ? 'All Years' : year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-full md:w-36 border-2 border-gray-200">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="passed">Passed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Error State */}
+          {error && (
+            <Card className="mb-8 border-2 border-red-300 bg-red-50">
+              <CardContent className="py-4 text-center text-red-700 font-medium">
+                {error}
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPropositions.map((proposition) => (
-                <PropositionCard
-                  key={proposition.id}
-                  proposition={proposition}
-                  prediction={predictions[proposition.id]}
-                  showPrediction={proposition.status === 'upcoming'}
-                />
-              ))}
-            </div>
           )}
-        </>
-      )}
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-900" />
+              <span className="ml-3 text-gray-700 font-medium">Loading propositions...</span>
+            </div>
+          ) : (
+            <>
+              {/* Results Header */}
+              <div className="mb-6 flex items-center justify-between">
+                <p className="text-gray-600 font-medium">
+                  Showing {filteredPropositions.length} propositions
+                </p>
+                {filteredPropositions.length > 0 && (
+                  <div className="flex gap-2">
+                    <Badge className="bg-blue-900 text-white border-0">{upcomingCount} upcoming</Badge>
+                    <Badge className="bg-green-700 text-white border-0">{passedCount} passed</Badge>
+                    <Badge className="bg-red-700 text-white border-0">{failedCount} failed</Badge>
+                  </div>
+                )}
+              </div>
+
+              {filteredPropositions.length === 0 ? (
+                <Card className="border-2 border-gray-200">
+                  <CardContent className="py-16 text-center">
+                    <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-600 font-medium">No propositions found matching your criteria.</p>
+                    <p className="text-gray-500 text-sm mt-2">Try adjusting your filters or search query.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredPropositions.map((proposition) => (
+                    <PropositionCard
+                      key={proposition.id}
+                      proposition={proposition}
+                      prediction={predictions[proposition.id]}
+                      showPrediction={proposition.status === 'upcoming'}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

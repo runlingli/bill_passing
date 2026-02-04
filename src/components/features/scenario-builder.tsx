@@ -149,15 +149,17 @@ export function ScenarioBuilder({
   );
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-2 border-gray-200">
+      <CardHeader className="border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-california-gold" />
-            What-If Scenario Builder
+          <CardTitle className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">What-If Scenario Builder</span>
           </CardTitle>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleReset}>
+            <Button variant="ghost" size="sm" onClick={handleReset} className="text-blue-900 hover:bg-blue-50">
               <RotateCcw className="h-4 w-4 mr-1" />
               Reset
             </Button>
@@ -165,17 +167,18 @@ export function ScenarioBuilder({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="pt-6 space-y-6">
         <div className="space-y-4">
           <Input
             label="Scenario Name"
             placeholder="Enter a name for this scenario"
             value={scenarioName}
             onChange={(e) => setScenarioName(e.target.value)}
+            className="border-2 border-gray-200 focus:border-blue-900"
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-gray-900 mb-3">
               Quick Presets
             </label>
             <div className="flex flex-wrap gap-2">
@@ -183,7 +186,7 @@ export function ScenarioBuilder({
                 <button
                   key={preset.id}
                   onClick={() => handlePresetSelect(preset.id)}
-                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-blue-900 hover:text-white border border-gray-200 rounded font-medium transition-colors"
                 >
                   {preset.name}
                 </button>
@@ -193,14 +196,14 @@ export function ScenarioBuilder({
         </div>
 
         <Tabs defaultValue="funding" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="funding" className="flex-1">Funding</TabsTrigger>
-            <TabsTrigger value="turnout" className="flex-1">Turnout</TabsTrigger>
-            <TabsTrigger value="framing" className="flex-1">Framing</TabsTrigger>
+          <TabsList className="w-full bg-gray-100 border border-gray-200 p-1 rounded">
+            <TabsTrigger value="funding" className="flex-1 data-[state=active]:bg-blue-900 data-[state=active]:text-white">Funding</TabsTrigger>
+            <TabsTrigger value="turnout" className="flex-1 data-[state=active]:bg-blue-900 data-[state=active]:text-white">Turnout</TabsTrigger>
+            <TabsTrigger value="framing" className="flex-1 data-[state=active]:bg-blue-900 data-[state=active]:text-white">Framing</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="funding" className="space-y-6">
-            <div className="p-4 bg-gray-50 rounded-lg space-y-6">
+          <TabsContent value="funding" className="space-y-6 pt-4">
+            <div className="p-4 bg-gray-50 rounded border border-gray-200 space-y-6">
               <Slider
                 label="Support Campaign Funding"
                 value={[parameters.funding.supportMultiplier]}
@@ -223,8 +226,8 @@ export function ScenarioBuilder({
               />
 
               {/* Estimated Impact Display */}
-              <div className="p-3 bg-white border rounded-lg">
-                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+              <div className="p-4 bg-white border-2 border-gray-200 rounded">
+                <p className="text-sm font-bold text-gray-900 mb-2">Estimated Impact</p>
                 <div className="text-sm">
                   {(() => {
                     const supportRatio = parameters.funding.supportMultiplier /
@@ -237,22 +240,22 @@ export function ScenarioBuilder({
                         <span className="text-gray-600">
                           Support ratio: {(supportRatio * 100).toFixed(0)}%
                         </span>
-                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`font-bold ${delta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                           {sign}{(delta * 100).toFixed(1)}% probability
                         </span>
                       </div>
                     );
                   })()}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   Formula: (Support% - 50%) × 0.8 × 30% weight
                 </p>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="turnout" className="space-y-6">
-            <div className="p-4 bg-gray-50 rounded-lg space-y-6">
+          <TabsContent value="turnout" className="space-y-6 pt-4">
+            <div className="p-4 bg-gray-50 rounded border border-gray-200 space-y-6">
               <Slider
                 label="Overall Voter Turnout"
                 value={[parameters.turnout.overallMultiplier]}
@@ -265,22 +268,22 @@ export function ScenarioBuilder({
               />
               <div className="grid grid-cols-3 gap-4 text-center text-sm">
                 <div>
-                  <Badge variant="danger">Low</Badge>
-                  <p className="text-gray-500 mt-1">Special Election</p>
+                  <Badge className="bg-red-700 text-white border-0">Low</Badge>
+                  <p className="text-gray-600 mt-1 font-medium">Special Election</p>
                 </div>
                 <div>
-                  <Badge variant="warning">Normal</Badge>
-                  <p className="text-gray-500 mt-1">Midterm</p>
+                  <Badge className="bg-blue-600 text-white border-0">Normal</Badge>
+                  <p className="text-gray-600 mt-1 font-medium">Midterm</p>
                 </div>
                 <div>
-                  <Badge variant="success">High</Badge>
-                  <p className="text-gray-500 mt-1">Presidential</p>
+                  <Badge className="bg-green-700 text-white border-0">High</Badge>
+                  <p className="text-gray-600 mt-1 font-medium">Presidential</p>
                 </div>
               </div>
 
               {/* Estimated Impact Display */}
-              <div className="p-3 bg-white border rounded-lg">
-                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+              <div className="p-4 bg-white border-2 border-gray-200 rounded">
+                <p className="text-sm font-bold text-gray-900 mb-2">Estimated Impact</p>
                 <div className="text-sm">
                   {(() => {
                     const multiplier = parameters.turnout.overallMultiplier;
@@ -296,22 +299,22 @@ export function ScenarioBuilder({
                         <span className="text-gray-600">
                           Turnout: {(multiplier * 100).toFixed(0)}% of baseline
                         </span>
-                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`font-bold ${delta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                           {sign}{(delta * 100).toFixed(1)}% probability
                         </span>
                       </div>
                     );
                   })()}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   Formula: (Turnout - 100%) × 15% scaling × 15% weight
                 </p>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="framing" className="space-y-6">
-            <div className="p-4 bg-gray-50 rounded-lg space-y-6">
+          <TabsContent value="framing" className="space-y-6 pt-4">
+            <div className="p-4 bg-gray-50 rounded border border-gray-200 space-y-6">
               <Slider
                 label="Title Sentiment"
                 value={[parameters.framing.titleSentiment]}
@@ -323,14 +326,14 @@ export function ScenarioBuilder({
                 formatValue={(v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1))}
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-900 mb-2">
                   Summary Complexity
                 </label>
                 <Select
                   value={parameters.framing.summaryComplexity}
                   onValueChange={(v) => updateFraming('summaryComplexity', v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-2 border-gray-200">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -341,8 +344,8 @@ export function ScenarioBuilder({
                 </Select>
               </div>
               {/* Estimated Impact Display */}
-              <div className="p-3 bg-white border rounded-lg">
-                <p className="text-xs font-medium text-gray-700 mb-2">Estimated Impact</p>
+              <div className="p-4 bg-white border-2 border-gray-200 rounded">
+                <p className="text-sm font-bold text-gray-900 mb-2">Estimated Impact</p>
                 <div className="text-sm">
                   {(() => {
                     // Sentiment impact: sentiment × 20% × 20% weight
@@ -363,14 +366,14 @@ export function ScenarioBuilder({
                         <span className="text-gray-600">
                           {sentimentLabel} framing, {parameters.framing.summaryComplexity} text
                         </span>
-                        <span className={`font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`font-bold ${delta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                           {sign}{(delta * 100).toFixed(1)}% probability
                         </span>
                       </div>
                     );
                   })()}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   Formula: (Sentiment × 20% + Complexity ±8%) × 20% weight
                 </p>
               </div>
@@ -378,17 +381,17 @@ export function ScenarioBuilder({
           </TabsContent>
         </Tabs>
 
-        <div className="flex gap-3 pt-4 border-t">
+        <div className="flex gap-3 pt-6 border-t-2 border-gray-200">
           <Button
             variant="primary"
-            className="flex-1"
+            className="flex-1 bg-blue-900 hover:bg-blue-800 text-white font-semibold"
             onClick={handleRunScenario}
             loading={isRunning}
           >
             <Play className="h-4 w-4 mr-2" />
             Run Scenario
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="border-2 border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold">
             <Save className="h-4 w-4 mr-2" />
             Save
           </Button>

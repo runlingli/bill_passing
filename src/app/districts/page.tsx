@@ -19,7 +19,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui';
-import { Map, Info, Calendar, FileText, Loader2 } from 'lucide-react';
+import { Map, Info, Calendar, FileText, Loader2, MapPin, TrendingUp, BarChart3 } from 'lucide-react';
 import { PropositionImpact, CaliforniaRegion, CALIFORNIA_REGIONS, Proposition, ApiResponse } from '@/types';
 
 const availableYears = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
@@ -227,33 +227,35 @@ export default function DistrictsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Header Section */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Map className="h-6 w-6 text-purple-600" />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-12 h-12 bg-blue-900 rounded-lg flex items-center justify-center">
+            <Map className="h-6 w-6 text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">District Impact Analysis</h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 font-medium">
               Understand how proposition passage affects partisan balance across California
             </p>
           </div>
         </div>
+        <div className="h-1 w-24 bg-blue-900 rounded" />
       </div>
 
       {/* Year and Proposition Selector */}
-      <Card className="mb-8">
+      <Card className="mb-8 border-2 border-gray-200">
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Year Selection */}
               <div className="md:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-900 mb-2">
                   <Calendar className="inline h-4 w-4 mr-1" />
                   Step 1: Select Year
                 </label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full border-2 border-gray-200">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -270,7 +272,7 @@ export default function DistrictsPage() {
 
               {/* Proposition Selection */}
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-900 mb-2">
                   <FileText className="inline h-4 w-4 mr-1" />
                   Step 2: Select Proposition
                 </label>
@@ -279,7 +281,7 @@ export default function DistrictsPage() {
                   onValueChange={setSelectedProposition}
                   disabled={isLoading || propositions.length === 0}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full border-2 border-gray-200">
                     <SelectValue placeholder={
                       isLoading ? "Loading..." :
                       propositions.length === 0 ? `No propositions for ${selectedYear}` :
@@ -296,15 +298,15 @@ export default function DistrictsPage() {
                 </Select>
               </div>
 
-              <div className="md:self-end flex items-center gap-2 text-sm text-gray-500">
-                <Info className="h-4 w-4" />
-                Based on voter registration data
+              <div className="md:self-end flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+                <Info className="h-4 w-4 text-blue-900" />
+                <span className="font-medium">Based on voter registration data</span>
               </div>
             </div>
 
             {/* Year stats */}
             {propositions.length > 0 && (
-              <div className="text-sm text-gray-500 pt-2 border-t">
+              <div className="text-sm text-gray-600 font-medium pt-3 border-t-2 border-gray-200">
                 {propositions.length} propositions found for {selectedYear}
               </div>
             )}
@@ -315,15 +317,15 @@ export default function DistrictsPage() {
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <span className="ml-2 text-gray-600">Loading propositions...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-900" />
+          <span className="ml-3 text-gray-600 font-medium">Loading propositions...</span>
         </div>
       )}
 
       {/* Error State */}
       {error && !isLoading && (
-        <Card className="mb-8 border-amber-200 bg-amber-50">
-          <CardContent className="py-4 text-center text-amber-700">
+        <Card className="mb-8 border-2 border-amber-200 bg-amber-50">
+          <CardContent className="py-4 text-center text-amber-700 font-medium">
             {error}. Try selecting a different year.
           </CardContent>
         </Card>
@@ -331,10 +333,10 @@ export default function DistrictsPage() {
 
       {!isLoading && propositions.length > 0 && (
       <Tabs defaultValue="impact" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="impact">Impact Overview</TabsTrigger>
-          <TabsTrigger value="regions">By Region</TabsTrigger>
-          <TabsTrigger value="methodology">Methodology</TabsTrigger>
+        <TabsList className="bg-gray-100 border-2 border-gray-200 p-1 rounded-lg">
+          <TabsTrigger value="impact" className="data-[state=active]:bg-blue-900 data-[state=active]:text-white font-semibold">Impact Overview</TabsTrigger>
+          <TabsTrigger value="regions" className="data-[state=active]:bg-blue-900 data-[state=active]:text-white font-semibold">By Region</TabsTrigger>
+          <TabsTrigger value="methodology" className="data-[state=active]:bg-blue-900 data-[state=active]:text-white font-semibold">Methodology</TabsTrigger>
         </TabsList>
 
         <TabsContent value="impact">
@@ -344,25 +346,25 @@ export default function DistrictsPage() {
         <TabsContent value="regions">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(Object.keys(CALIFORNIA_REGIONS) as CaliforniaRegion[]).map((region) => (
-              <Card key={region}>
-                <CardHeader>
-                  <CardTitle className="text-base">{region}</CardTitle>
-                  <CardDescription>
+              <Card key={region} className="border-2 border-gray-200 hover:border-blue-900 transition-colors">
+                <CardHeader className="border-b border-gray-200">
+                  <CardTitle className="text-lg font-bold text-gray-900">{region}</CardTitle>
+                  <CardDescription className="text-gray-600 font-medium">
                     {CALIFORNIA_REGIONS[region].length} counties
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Net Direction</span>
+                      <span className="text-sm text-gray-600 font-medium">Net Direction</span>
                       <Badge
-                        variant={
+                        className={`border-0 font-semibold ${
                           region === 'Bay Area' || region === 'Los Angeles'
-                            ? 'info'
+                            ? 'bg-blue-900 text-white'
                             : region === 'Central Valley' || region === 'Inland Empire'
-                              ? 'danger'
-                              : 'default'
-                        }
+                              ? 'bg-red-700 text-white'
+                              : 'bg-gray-200 text-gray-700'
+                        }`}
                       >
                         {region === 'Bay Area' || region === 'Los Angeles'
                           ? 'Democratic'
@@ -372,14 +374,16 @@ export default function DistrictsPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Impact Level</span>
-                      <span className="text-sm font-medium">
+                      <span className="text-sm text-gray-600 font-medium">Impact Level</span>
+                      <span className={`text-sm font-bold ${
+                        region === 'Bay Area' || region === 'Central Valley' ? 'text-red-700' : 'text-amber-600'
+                      }`}>
                         {region === 'Bay Area' || region === 'Central Valley' ? 'High' : 'Moderate'}
                       </span>
                     </div>
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-gray-500">
-                        Counties: {CALIFORNIA_REGIONS[region].slice(0, 3).join(', ')}
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-semibold">Counties:</span> {CALIFORNIA_REGIONS[region].slice(0, 3).join(', ')}
                         {CALIFORNIA_REGIONS[region].length > 3 &&
                           ` +${CALIFORNIA_REGIONS[region].length - 3} more`}
                       </p>
@@ -393,32 +397,37 @@ export default function DistrictsPage() {
 
         <TabsContent value="methodology">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>How We Calculate Impact</CardTitle>
+            <Card className="border-2 border-gray-200">
+              <CardHeader className="border-b border-gray-200">
+                <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  </div>
+                  How We Calculate Impact
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-6">
                 <div>
-                  <h4 className="font-medium mb-2">Data Sources</h4>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2" />
+                  <h4 className="font-bold text-gray-900 mb-3">Data Sources</h4>
+                  <ul className="space-y-3 text-sm text-gray-600">
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-900 rounded-full mt-2 flex-shrink-0" />
                       <span>
-                        <strong>Voter Registration:</strong> California Secretary of State
+                        <strong className="text-gray-900">Voter Registration:</strong> California Secretary of State
                         registration data by county and district
                       </span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2" />
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-900 rounded-full mt-2 flex-shrink-0" />
                       <span>
-                        <strong>Demographics:</strong> US Census Bureau American Community
+                        <strong className="text-gray-900">Demographics:</strong> US Census Bureau American Community
                         Survey (ACS) data
                       </span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2" />
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-900 rounded-full mt-2 flex-shrink-0" />
                       <span>
-                        <strong>Historical Results:</strong> Past proposition results by
+                        <strong className="text-gray-900">Historical Results:</strong> Past proposition results by
                         precinct from CA Elections Data Archive
                       </span>
                     </li>
@@ -426,7 +435,7 @@ export default function DistrictsPage() {
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">Calculation Method</h4>
+                  <h4 className="font-bold text-gray-900 mb-3">Calculation Method</h4>
                   <ol className="space-y-2 text-sm text-gray-600 list-decimal list-inside">
                     <li>Analyze proposition content and identify affected policy areas</li>
                     <li>Map policy areas to demographic and political indicators</li>
@@ -438,51 +447,56 @@ export default function DistrictsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Understanding the Metrics</CardTitle>
+            <Card className="border-2 border-gray-200">
+              <CardHeader className="border-b border-gray-200">
+                <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+                    <Info className="h-5 w-5 text-white" />
+                  </div>
+                  Understanding the Metrics
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-1">Democratic Advantage</h4>
+              <CardContent className="pt-6 space-y-4">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-1">Democratic Advantage</h4>
                   <p className="text-sm text-gray-600">
                     The percentage point difference between Democratic and Republican
                     voter registration. Positive values indicate Democratic lean.
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-1">Competitiveness Index</h4>
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-1">Competitiveness Index</h4>
                   <p className="text-sm text-gray-600">
                     A 0-1 scale measuring how close the district is to 50/50 partisan
                     balance. Higher values indicate more competitive districts.
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-1">Balance Shift</h4>
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-1">Balance Shift</h4>
                   <p className="text-sm text-gray-600">
                     The projected change in Democratic Advantage after proposition
                     passage. Positive shifts favor Democrats.
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-1">Significance Level</h4>
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-1">Significance Level</h4>
                   <p className="text-sm text-gray-600">
-                    <strong>Significant:</strong> {'>'}2% shift | <strong>Moderate:</strong>{' '}
-                    1-2% shift | <strong>Minimal:</strong> {'<'}1% shift
+                    <span className="font-bold text-red-700">Significant:</span> {'>'}2% shift | <span className="font-bold text-amber-600">Moderate:</span>{' '}
+                    1-2% shift | <span className="font-bold text-gray-500">Minimal:</span> {'<'}1% shift
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Disclaimer</CardTitle>
+            <Card className="lg:col-span-2 border-2 border-gray-200">
+              <CardHeader className="border-b border-gray-200">
+                <CardTitle className="text-xl font-bold text-gray-900">Disclaimer</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-600 leading-relaxed">
                   This analysis is based on statistical models and historical patterns.
                   Actual impacts may vary based on many factors including campaign
                   dynamics, national political environment, and unforeseen events.

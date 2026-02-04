@@ -141,32 +141,34 @@ export default function ScenariosPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Header Section */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-california-gold/20 rounded-lg">
-            <Zap className="h-6 w-6 text-california-gold" />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-12 h-12 bg-blue-900 rounded-lg flex items-center justify-center">
+            <Zap className="h-6 w-6 text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">What-If Scenario Simulator</h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 font-medium">
               Explore how different factors might affect proposition outcomes
             </p>
           </div>
         </div>
+        <div className="h-1 w-24 bg-blue-900 rounded" />
       </div>
 
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <span className="ml-2 text-gray-600">Loading propositions...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-900" />
+          <span className="ml-3 text-gray-600 font-medium">Loading propositions...</span>
         </div>
       )}
 
       {/* Error State */}
       {error && !isLoading && (
-        <Card className="mb-8 border-red-200 bg-red-50">
-          <CardContent className="py-4 text-center text-red-600">
+        <Card className="mb-8 border-2 border-red-200 bg-red-50">
+          <CardContent className="py-4 text-center text-red-700 font-medium">
             {error}
           </CardContent>
         </Card>
@@ -174,18 +176,18 @@ export default function ScenariosPage() {
 
       {/* Year and Proposition Selector */}
       {!isLoading && (
-        <Card className="mb-8">
+        <Card className="mb-8 border-2 border-gray-200">
           <CardContent className="pt-6">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col md:flex-row gap-4">
                 {/* Year Selection */}
                 <div className="md:w-48">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-900 mb-2">
                     <Calendar className="inline h-4 w-4 mr-1" />
                     Step 1: Select Year
                   </label>
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full border-2 border-gray-200">
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -202,7 +204,7 @@ export default function ScenariosPage() {
 
                 {/* Proposition Selection */}
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-900 mb-2">
                     <FileText className="inline h-4 w-4 mr-1" />
                     Step 2: Select Proposition
                   </label>
@@ -211,7 +213,7 @@ export default function ScenariosPage() {
                     onValueChange={setSelectedProposition}
                     disabled={propositions.length === 0}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full border-2 border-gray-200">
                       <SelectValue placeholder={
                         propositions.length === 0
                           ? `No propositions for ${selectedYear}`
@@ -230,7 +232,7 @@ export default function ScenariosPage() {
 
                 <div className="md:self-end">
                   <Link href={`/propositions/${selectedProposition}`}>
-                    <Button variant="outline" disabled={!selectedProposition}>
+                    <Button variant="outline" disabled={!selectedProposition} className="border-2 border-blue-900 text-blue-900 hover:bg-blue-50 font-semibold">
                       View Details
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -240,7 +242,7 @@ export default function ScenariosPage() {
 
               {/* Year stats */}
               {propositions.length > 0 && (
-                <div className="text-sm text-gray-500 pt-2 border-t">
+                <div className="text-sm text-gray-600 font-medium pt-3 border-t-2 border-gray-200">
                   {propositions.length} propositions found for {selectedYear}
                 </div>
               )}
@@ -254,10 +256,10 @@ export default function ScenariosPage() {
         {/* Scenario Builder */}
         <div className="lg:col-span-2">
           {isLoadingDetails ? (
-            <Card>
+            <Card className="border-2 border-gray-200">
               <CardContent className="py-12 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
-                <span className="ml-2 text-gray-600">Loading proposition details...</span>
+                <Loader2 className="h-6 w-6 animate-spin text-blue-900" />
+                <span className="ml-3 text-gray-600 font-medium">Loading proposition details...</span>
               </CardContent>
             </Card>
           ) : currentProposition ? (
@@ -268,9 +270,12 @@ export default function ScenariosPage() {
               customWeights={weights}
             />
           ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-500">
-                Select a proposition to start building scenarios
+            <Card className="border-2 border-gray-200">
+              <CardContent className="py-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-gray-700 font-bold">Select a proposition to start building scenarios</p>
               </CardContent>
             </Card>
           )}
@@ -284,40 +289,42 @@ export default function ScenariosPage() {
 
         {/* Saved Scenarios Sidebar */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Quick Presets</CardTitle>
-              <CardDescription>
+          <Card className="border-2 border-gray-200">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-lg font-bold text-gray-900">Quick Presets</CardTitle>
+              <CardDescription className="text-gray-600">
                 Start with a predefined scenario configuration
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="space-y-2">
                 {SCENARIO_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     onClick={() => handlePresetClick(preset.id)}
                     disabled={!currentProposition}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <p className="font-medium text-sm">{preset.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">{preset.description}</p>
+                    <p className="font-bold text-sm text-gray-900">{preset.name}</p>
+                    <p className="text-xs text-gray-600 mt-1">{preset.description}</p>
                   </button>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+          <Card className="border-2 border-gray-200">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-white" />
+                </div>
                 Recent Scenarios
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {scenarios.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-500 text-center py-4 font-medium">
                   No scenarios run yet. Create one to see results here.
                 </p>
               ) : (
@@ -325,20 +332,22 @@ export default function ScenariosPage() {
                   {scenarios.map((scenario) => (
                     <div
                       key={scenario.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                         activeScenario?.id === scenario.id
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          ? 'border-blue-900 bg-blue-50'
+                          : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                       }`}
                       onClick={() => setActiveScenario(scenario)}
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium text-sm">{scenario.name}</p>
+                          <p className="font-bold text-sm text-gray-900">{scenario.name}</p>
                           {scenario.results && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <TrendingUp className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-600">
+                            <div className="flex items-center gap-2 mt-2">
+                              <TrendingUp className="h-3 w-3 text-gray-500" />
+                              <span className={`text-xs font-bold ${
+                                scenario.results.probabilityDelta > 0 ? 'text-green-700' : 'text-red-700'
+                              }`}>
                                 {(scenario.results.newProbability * 100).toFixed(0)}% (
                                 {scenario.results.probabilityDelta > 0 ? '+' : ''}
                                 {(scenario.results.probabilityDelta * 100).toFixed(1)}%)
@@ -351,7 +360,7 @@ export default function ScenariosPage() {
                             e.stopPropagation();
                             handleDeleteScenario(scenario.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          className="p-2 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -363,34 +372,36 @@ export default function ScenariosPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="border-2 border-gray-200">
+            <CardHeader className="pb-2 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Settings2 className="h-4 w-4" />
+                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
+                    <Settings2 className="h-4 w-4 text-white" />
+                  </div>
                   Model Weights
                 </CardTitle>
                 <button
                   onClick={() => setShowWeightEditor(!showWeightEditor)}
-                  className="text-xs text-primary-600 hover:underline"
+                  className="text-xs text-blue-900 hover:underline font-semibold"
                 >
                   {showWeightEditor ? 'Hide' : 'Edit'}
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <code className="text-xs text-blue-700">P = Σ(Factor × Weight)</code>
+            <CardContent className="pt-4 space-y-3">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <code className="text-xs text-blue-900 font-bold">P = Σ(Factor × Weight)</code>
               </div>
 
               {/* Weight Total Indicator */}
-              <div className={`text-xs p-2 rounded ${Math.abs(totalWeight - 1) < 0.01 ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+              <div className={`text-xs p-3 rounded-lg font-bold ${Math.abs(totalWeight - 1) < 0.01 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                 Total: {(totalWeight * 100).toFixed(0)}%
                 {Math.abs(totalWeight - 1) >= 0.01 && ' (should be 100%)'}
               </div>
 
               {/* Editable Weights */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {[
                   { key: 'campaignFinance', label: 'Campaign Finance', hint: 'Money influence' },
                   { key: 'ballotWording', label: 'Ballot Wording', hint: 'Language impact' },
@@ -401,8 +412,8 @@ export default function ScenariosPage() {
                 ].map(({ key, label, hint }) => (
                   <div key={key} className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-600">{label}</span>
-                      <span className="font-mono text-gray-800">
+                      <span className="text-gray-700 font-medium">{label}</span>
+                      <span className="font-mono font-bold text-gray-900">
                         {(weights[key as keyof FactorWeights] * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -414,9 +425,9 @@ export default function ScenariosPage() {
                           max="50"
                           value={weights[key as keyof FactorWeights] * 100}
                           onChange={(e) => updateWeight(key as keyof FactorWeights, parseInt(e.target.value) / 100)}
-                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
                         />
-                        <p className="text-[10px] text-gray-400">{hint}</p>
+                        <p className="text-[10px] text-gray-500">{hint}</p>
                       </>
                     )}
                   </div>
@@ -426,19 +437,19 @@ export default function ScenariosPage() {
               {showWeightEditor && (
                 <button
                   onClick={resetWeights}
-                  className="w-full text-xs text-gray-500 hover:text-gray-700 py-1 border border-dashed rounded"
+                  className="w-full text-xs text-gray-600 hover:text-gray-900 py-2 border-2 border-dashed border-gray-300 rounded-lg font-semibold hover:border-gray-400 transition-colors"
                 >
                   Reset to Default
                 </button>
               )}
 
               {/* Formula Reference */}
-              <div className="border-t pt-3 space-y-2">
-                <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
+              <div className="border-t-2 border-gray-200 pt-4 space-y-2">
+                <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
                   <Info className="h-3 w-3" />
                   Factor Calculations
                 </p>
-                <div className="text-[10px] text-gray-500 space-y-1 font-mono bg-gray-50 p-2 rounded">
+                <div className="text-[10px] text-gray-600 space-y-1 font-mono bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <p>Finance: (Support% - 50%) × 0.8</p>
                   <p>Turnout: (Rate - 1.0) × 0.15</p>
                   <p>Framing: Sentiment × 0.2 + Complexity</p>

@@ -2,8 +2,8 @@
 
 import { Scenario } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
-import { formatPercentage, getProbabilityColor } from '@/lib/utils';
-import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { formatPercentage } from '@/lib/utils';
+import { ArrowRight, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 
 interface ScenarioResultsDisplayProps {
   scenario: Scenario;
@@ -18,9 +18,10 @@ export function ScenarioResultsDisplay({
 
   if (!results) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-gray-500">
-          Run the scenario to see results
+      <Card className="border-2 border-gray-200">
+        <CardContent className="py-12 text-center">
+          <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Run the scenario to see results</p>
         </CardContent>
       </Card>
     );
@@ -32,27 +33,26 @@ export function ScenarioResultsDisplay({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Scenario Results: {scenario.name}</CardTitle>
+      <Card className="border-2 border-gray-200">
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="text-xl font-bold text-gray-900">Scenario Results: {scenario.name}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {showComparison && (
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <div className="text-center">
-                <p className="text-sm text-gray-500 mb-1">Original</p>
+            <div className="flex items-center justify-center gap-6 mb-8">
+              <div className="text-center p-4 bg-gray-50 rounded border border-gray-200">
+                <p className="text-sm text-gray-600 font-medium mb-2">Original</p>
                 <p
-                  className={`text-3xl font-bold ${getProbabilityColor(results.originalProbability)}`}
+                  className={`text-4xl font-bold ${results.originalProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
                 >
                   {formatPercentage(results.originalProbability)}
                 </p>
               </div>
 
               <div className="flex flex-col items-center">
-                <ArrowRight className="h-8 w-8 text-gray-400" />
+                <ArrowRight className="h-8 w-8 text-blue-900" />
                 <Badge
-                  variant={isPositive ? 'success' : deltaPercent < 0 ? 'danger' : 'default'}
-                  className="mt-1"
+                  className={`mt-2 ${isPositive ? 'bg-green-700' : deltaPercent < 0 ? 'bg-red-700' : 'bg-gray-600'} text-white border-0`}
                 >
                   <DeltaIcon className="h-3 w-3 mr-1" />
                   {isPositive ? '+' : ''}
@@ -60,10 +60,10 @@ export function ScenarioResultsDisplay({
                 </Badge>
               </div>
 
-              <div className="text-center">
-                <p className="text-sm text-gray-500 mb-1">Projected</p>
+              <div className="text-center p-4 bg-blue-50 rounded border border-blue-200">
+                <p className="text-sm text-gray-600 font-medium mb-2">Projected</p>
                 <p
-                  className={`text-3xl font-bold ${getProbabilityColor(results.newProbability)}`}
+                  className={`text-4xl font-bold ${results.newProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
                 >
                   {formatPercentage(results.newProbability)}
                 </p>
@@ -72,41 +72,41 @@ export function ScenarioResultsDisplay({
           )}
 
           <div className="space-y-2 mb-6">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Confidence Interval</span>
-              <span>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-700 font-medium">Confidence Interval</span>
+              <span className="text-gray-900 font-bold">
                 {formatPercentage(results.confidenceInterval.lower)} -{' '}
                 {formatPercentage(results.confidenceInterval.upper)}
               </span>
             </div>
-            <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="relative h-4 bg-gray-200 rounded overflow-hidden">
               <div
-                className="absolute h-full bg-primary-200"
+                className="absolute h-full bg-blue-200"
                 style={{
                   left: `${results.confidenceInterval.lower * 100}%`,
                   width: `${(results.confidenceInterval.upper - results.confidenceInterval.lower) * 100}%`,
                 }}
               />
               <div
-                className="absolute h-full w-1 bg-primary-600"
+                className="absolute h-full w-1 bg-blue-900"
                 style={{ left: `${results.newProbability * 100}%` }}
               />
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <h4 className="font-medium mb-3">Factor Contributions</h4>
-            <div className="space-y-3">
+          <div className="border-t-2 border-gray-200 pt-6">
+            <h4 className="font-bold text-gray-900 mb-4">Factor Contributions</h4>
+            <div className="space-y-4">
               {results.factorContributions.map((contribution) => (
-                <div key={contribution.factor} className="flex items-center gap-3">
-                  <div className="w-32 text-sm text-gray-600 capitalize">
+                <div key={contribution.factor} className="flex items-center gap-4 p-3 bg-gray-50 rounded border border-gray-200">
+                  <div className="w-32 text-sm text-gray-900 font-medium capitalize">
                     {contribution.factor.replace(/([A-Z])/g, ' $1').trim()}
                   </div>
                   <div className="flex-1">
-                    <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="relative h-3 bg-gray-200 rounded overflow-hidden">
                       {contribution.contribution > 0 ? (
                         <div
-                          className="absolute h-full bg-green-500 rounded-full"
+                          className="absolute h-full bg-green-600 rounded"
                           style={{
                             left: '50%',
                             width: `${Math.min(Math.abs(contribution.contribution) * 500, 50)}%`,
@@ -114,7 +114,7 @@ export function ScenarioResultsDisplay({
                         />
                       ) : (
                         <div
-                          className="absolute h-full bg-red-500 rounded-full"
+                          className="absolute h-full bg-red-600 rounded"
                           style={{
                             right: '50%',
                             width: `${Math.min(Math.abs(contribution.contribution) * 500, 50)}%`,
@@ -125,12 +125,12 @@ export function ScenarioResultsDisplay({
                     </div>
                   </div>
                   <div
-                    className={`w-16 text-sm text-right ${
+                    className={`w-20 text-sm text-right font-bold ${
                       contribution.contribution > 0
-                        ? 'text-green-600'
+                        ? 'text-green-700'
                         : contribution.contribution < 0
-                          ? 'text-red-600'
-                          : 'text-gray-500'
+                          ? 'text-red-700'
+                          : 'text-gray-600'
                     }`}
                   >
                     {contribution.contribution > 0 ? '+' : ''}
@@ -143,11 +143,11 @@ export function ScenarioResultsDisplay({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Scenario Parameters Applied</CardTitle>
+      <Card className="border-2 border-gray-200">
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="text-lg font-bold text-gray-900">Scenario Parameters Applied</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <ParameterCard
               label="Support Funding"
@@ -192,10 +192,10 @@ function ParameterCard({
 }) {
   return (
     <div
-      className={`p-3 rounded-lg ${changed ? 'bg-primary-50 border border-primary-200' : 'bg-gray-50'}`}
+      className={`p-4 rounded border ${changed ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}
     >
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`font-medium ${changed ? 'text-primary-700' : 'text-gray-700'}`}>
+      <p className="text-xs text-gray-600 font-medium">{label}</p>
+      <p className={`font-bold ${changed ? 'text-blue-900' : 'text-gray-700'}`}>
         {value}
       </p>
     </div>

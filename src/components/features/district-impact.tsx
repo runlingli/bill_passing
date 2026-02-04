@@ -20,7 +20,7 @@ import {
   SelectItem,
 } from '@/components/ui';
 import { formatPercentage } from '@/lib/utils';
-import { MapPin, TrendingUp, TrendingDown, Minus, Filter } from 'lucide-react';
+import { MapPin, TrendingUp, TrendingDown, Minus, Filter, Target, BarChart3 } from 'lucide-react';
 
 interface DistrictImpactProps {
   impact: PropositionImpact;
@@ -41,23 +41,30 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary-600" />
-            District Impact Analysis
+      <Card className="border-2 border-gray-200">
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+              <MapPin className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">District Impact Analysis</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ImpactSummaryDisplay summary={impact.summary} />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Statewide Impact</CardTitle>
+      <Card className="border-2 border-gray-200">
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+              <Target className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">Statewide Impact</span>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               label="Affected Districts"
@@ -100,16 +107,21 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-gray-200">
+        <CardHeader className="border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <CardTitle>District Details</CardTitle>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-gray-900">District Details</span>
+            </CardTitle>
             <div className="flex gap-2">
               <Select
                 value={districtTypeFilter}
                 onValueChange={(v) => setDistrictTypeFilter(v as DistrictType | 'all')}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-44 border-2 border-gray-200">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -122,7 +134,7 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'impact' | 'name')}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-36 border-2 border-gray-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,13 +145,13 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-3">
             {filteredDistricts.slice(0, 20).map((district) => (
               <DistrictRow key={district.districtId} district={district} />
             ))}
             {filteredDistricts.length > 20 && (
-              <p className="text-center text-sm text-gray-500 py-2">
+              <p className="text-center text-sm text-gray-600 py-3 font-medium border-t border-gray-200">
                 Showing 20 of {filteredDistricts.length} districts
               </p>
             )}
@@ -154,31 +166,31 @@ function ImpactSummaryDisplay({ summary }: { summary: ImpactSummary }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-red-50 rounded-lg text-center">
-          <p className="text-2xl font-bold text-red-600">
+        <div className="p-5 bg-red-50 rounded-lg text-center border-2 border-red-200">
+          <p className="text-3xl font-bold text-red-700">
             {summary.impactedDistricts.significant}
           </p>
-          <p className="text-sm text-red-700">Significant Impact</p>
+          <p className="text-sm text-red-700 font-semibold mt-1">Significant Impact</p>
         </div>
-        <div className="p-4 bg-yellow-50 rounded-lg text-center">
-          <p className="text-2xl font-bold text-yellow-600">
+        <div className="p-5 bg-amber-50 rounded-lg text-center border-2 border-amber-200">
+          <p className="text-3xl font-bold text-amber-600">
             {summary.impactedDistricts.moderate}
           </p>
-          <p className="text-sm text-yellow-700">Moderate Impact</p>
+          <p className="text-sm text-amber-700 font-semibold mt-1">Moderate Impact</p>
         </div>
-        <div className="p-4 bg-gray-50 rounded-lg text-center">
-          <p className="text-2xl font-bold text-gray-600">
+        <div className="p-5 bg-gray-50 rounded-lg text-center border-2 border-gray-200">
+          <p className="text-3xl font-bold text-gray-600">
             {summary.impactedDistricts.minimal}
           </p>
-          <p className="text-sm text-gray-700">Minimal Impact</p>
+          <p className="text-sm text-gray-700 font-semibold mt-1">Minimal Impact</p>
         </div>
       </div>
 
       <div>
-        <h4 className="font-medium mb-3">Shift Distribution</h4>
-        <div className="flex h-8 rounded-lg overflow-hidden">
+        <h4 className="font-bold text-gray-900 mb-3">Shift Distribution</h4>
+        <div className="flex h-10 rounded-lg overflow-hidden border-2 border-gray-200">
           <div
-            className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
+            className="bg-blue-900 flex items-center justify-center text-white text-xs font-bold"
             style={{
               width: `${(summary.shiftDistribution.democratic / summary.totalDistricts) * 100}%`,
             }}
@@ -186,7 +198,7 @@ function ImpactSummaryDisplay({ summary }: { summary: ImpactSummary }) {
             {summary.shiftDistribution.democratic > 0 && `D: ${summary.shiftDistribution.democratic}`}
           </div>
           <div
-            className="bg-gray-300 flex items-center justify-center text-gray-700 text-xs font-medium"
+            className="bg-gray-300 flex items-center justify-center text-gray-700 text-xs font-bold"
             style={{
               width: `${(summary.shiftDistribution.unchanged / summary.totalDistricts) * 100}%`,
             }}
@@ -194,7 +206,7 @@ function ImpactSummaryDisplay({ summary }: { summary: ImpactSummary }) {
             {summary.shiftDistribution.unchanged > 0 && summary.shiftDistribution.unchanged}
           </div>
           <div
-            className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
+            className="bg-red-700 flex items-center justify-center text-white text-xs font-bold"
             style={{
               width: `${(summary.shiftDistribution.republican / summary.totalDistricts) * 100}%`,
             }}
@@ -202,15 +214,15 @@ function ImpactSummaryDisplay({ summary }: { summary: ImpactSummary }) {
             {summary.shiftDistribution.republican > 0 && `R: ${summary.shiftDistribution.republican}`}
           </div>
         </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-gray-600 mt-2 font-medium">
           <span>Democratic</span>
           <span>Unchanged</span>
           <span>Republican</span>
         </div>
       </div>
 
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-700">{summary.representationImpact}</p>
+      <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+        <p className="text-sm text-gray-700 leading-relaxed">{summary.representationImpact}</p>
       </div>
     </div>
   );
@@ -226,47 +238,55 @@ function DistrictRow({ district }: { district: DistrictImpactDetail }) {
 
   const shiftColor =
     district.change.direction === 'democratic'
-      ? 'text-blue-600'
+      ? 'text-blue-900'
       : district.change.direction === 'republican'
-        ? 'text-red-600'
+        ? 'text-red-700'
         : 'text-gray-500';
 
+  const shiftBg =
+    district.change.direction === 'democratic'
+      ? 'bg-blue-50'
+      : district.change.direction === 'republican'
+        ? 'bg-red-50'
+        : 'bg-gray-50';
+
   return (
-    <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium truncate">{district.districtName}</p>
-          <Badge size="sm" variant="default">
+          <p className="font-bold text-gray-900 truncate">{district.districtName}</p>
+          <Badge className="bg-gray-200 text-gray-700 border-0 text-xs font-semibold">
             {district.districtType.replace('_', ' ')}
           </Badge>
         </div>
-        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-          <span>
-            Current: {district.currentPartisan.democraticAdvantage > 0 ? 'D' : 'R'}+
-            {Math.abs(district.currentPartisan.democraticAdvantage).toFixed(1)}
+        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+          <span className="font-medium">
+            Current: <span className={district.currentPartisan.democraticAdvantage > 0 ? 'text-blue-900' : 'text-red-700'}>
+              {district.currentPartisan.democraticAdvantage > 0 ? 'D' : 'R'}+
+              {Math.abs(district.currentPartisan.democraticAdvantage).toFixed(1)}
+            </span>
           </span>
-          <span>Turnout: {formatPercentage(district.currentPartisan.voterEngagement)}</span>
+          <span className="font-medium">Turnout: {formatPercentage(district.currentPartisan.voterEngagement)}</span>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <div className={`flex items-center gap-1 ${shiftColor}`}>
+          <div className={`flex items-center gap-1 ${shiftColor} ${shiftBg} px-3 py-1 rounded-lg`}>
             <ShiftIcon className="h-4 w-4" />
-            <span className="font-medium">
+            <span className="font-bold">
               {district.change.balanceShift > 0 ? '+' : ''}
               {district.change.balanceShift.toFixed(2)}%
             </span>
           </div>
           <Badge
-            size="sm"
-            variant={
+            className={`mt-2 border-0 font-semibold ${
               district.change.significance === 'significant'
-                ? 'danger'
+                ? 'bg-red-700 text-white'
                 : district.change.significance === 'moderate'
-                  ? 'warning'
-                  : 'default'
-            }
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-gray-200 text-gray-700'
+            }`}
           >
             {district.change.significance}
           </Badge>
@@ -288,22 +308,22 @@ function StatCard({
   variant?: 'default' | 'info' | 'danger';
 }) {
   const colors = {
-    default: 'bg-gray-50',
-    info: 'bg-blue-50',
-    danger: 'bg-red-50',
+    default: 'bg-gray-50 border-gray-200',
+    info: 'bg-blue-50 border-blue-200',
+    danger: 'bg-red-50 border-red-200',
   };
 
   const textColors = {
     default: 'text-gray-900',
-    info: 'text-blue-700',
+    info: 'text-blue-900',
     danger: 'text-red-700',
   };
 
   return (
-    <div className={`p-4 rounded-lg ${colors[variant]}`}>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${textColors[variant]} capitalize`}>{value}</p>
-      {subtext && <p className="text-xs text-gray-500 capitalize">{subtext}</p>}
+    <div className={`p-5 rounded-lg border-2 ${colors[variant]}`}>
+      <p className="text-sm text-gray-600 font-medium">{label}</p>
+      <p className={`text-2xl font-bold ${textColors[variant]} capitalize mt-1`}>{value}</p>
+      {subtext && <p className="text-xs text-gray-500 capitalize mt-1 font-medium">{subtext}</p>}
     </div>
   );
 }
