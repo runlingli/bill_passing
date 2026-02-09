@@ -162,7 +162,7 @@ export default function PredictionsPage() {
             <BarChart3 className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Prediction Dashboard</h1>
+            <h1 className="font-display text-3xl font-bold text-gray-900">Prediction Dashboard</h1>
             <p className="text-gray-600 font-medium">
               View passage probabilities for upcoming propositions
             </p>
@@ -200,7 +200,7 @@ export default function PredictionsPage() {
                     <Target className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-blue-900">{predictions.length}</p>
+                    <p className="text-3xl font-display font-bold text-blue-900">{predictions.length}</p>
                     <p className="text-sm text-gray-600 font-medium">Upcoming Props</p>
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default function PredictionsPage() {
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-green-700">{likelyToPass}</p>
+                    <p className="text-3xl font-display font-bold text-green-700">{likelyToPass}</p>
                     <p className="text-sm text-gray-600 font-medium">Likely to Pass</p>
                   </div>
                 </div>
@@ -226,7 +226,7 @@ export default function PredictionsPage() {
                     <TrendingDown className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-red-700">
+                    <p className="text-3xl font-display font-bold text-red-700">
                       {predictions.length - likelyToPass}
                     </p>
                     <p className="text-sm text-gray-600 font-medium">Likely to Fail</p>
@@ -241,7 +241,7 @@ export default function PredictionsPage() {
                     <BarChart3 className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-gray-700">
+                    <p className="text-3xl font-display font-bold text-gray-700">
                       {formatPercentage(avgProbability)}
                     </p>
                     <p className="text-sm text-gray-600 font-medium">Avg. Probability</p>
@@ -257,7 +257,7 @@ export default function PredictionsPage() {
               <Card className="border-2 border-gray-200">
                 <CardHeader className="pb-3 border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-bold text-gray-900">All Predictions</CardTitle>
+                    <CardTitle className="text-lg font-display font-bold text-gray-900">All Predictions</CardTitle>
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'probability' | 'confidence')}>
                       <SelectTrigger className="w-36 border-2 border-gray-200">
                         <Filter className="h-3 w-3 mr-1" />
@@ -352,7 +352,7 @@ export default function PredictionsPage() {
                               {selectedItem.year}
                             </Badge>
                           </div>
-                          <CardTitle className="text-xl font-bold text-gray-900">
+                          <CardTitle className="text-xl font-display font-bold text-gray-900">
                             Proposition {selectedItem.number}: {selectedItem.title}
                           </CardTitle>
                           <p className="text-sm text-gray-600 mt-2 font-medium">

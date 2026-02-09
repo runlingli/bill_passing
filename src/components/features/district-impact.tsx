@@ -47,7 +47,7 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
             <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
               <MapPin className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">District Impact Analysis</span>
+            <span className="text-xl font-display font-bold text-gray-900">District Impact Analysis</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -61,7 +61,7 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
             <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Statewide Impact</span>
+            <span className="text-xl font-display font-bold text-gray-900">Statewide Impact</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -114,7 +114,7 @@ export function DistrictImpactDisplay({ impact }: DistrictImpactProps) {
               <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
                 <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">District Details</span>
+              <span className="text-xl font-display font-bold text-gray-900">District Details</span>
             </CardTitle>
             <div className="flex gap-2">
               <Select
@@ -167,19 +167,19 @@ function ImpactSummaryDisplay({ summary }: { summary: ImpactSummary }) {
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <div className="p-5 bg-red-50 rounded-lg text-center border-2 border-red-200">
-          <p className="text-3xl font-bold text-red-700">
+          <p className="text-3xl font-display font-bold text-red-700">
             {summary.impactedDistricts.significant}
           </p>
           <p className="text-sm text-red-700 font-semibold mt-1">Significant Impact</p>
         </div>
         <div className="p-5 bg-amber-50 rounded-lg text-center border-2 border-amber-200">
-          <p className="text-3xl font-bold text-amber-600">
+          <p className="text-3xl font-display font-bold text-amber-600">
             {summary.impactedDistricts.moderate}
           </p>
           <p className="text-sm text-amber-700 font-semibold mt-1">Moderate Impact</p>
         </div>
         <div className="p-5 bg-gray-50 rounded-lg text-center border-2 border-gray-200">
-          <p className="text-3xl font-bold text-gray-600">
+          <p className="text-3xl font-display font-bold text-gray-600">
             {summary.impactedDistricts.minimal}
           </p>
           <p className="text-sm text-gray-700 font-semibold mt-1">Minimal Impact</p>

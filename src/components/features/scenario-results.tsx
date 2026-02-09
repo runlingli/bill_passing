@@ -35,7 +35,7 @@ export function ScenarioResultsDisplay({
     <div className="space-y-6">
       <Card className="border-2 border-gray-200">
         <CardHeader className="border-b border-gray-200">
-          <CardTitle className="text-xl font-bold text-gray-900">Scenario Results: {scenario.name}</CardTitle>
+          <CardTitle className="text-xl font-display font-bold text-gray-900">Scenario Results: {scenario.name}</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           {showComparison && (
@@ -43,7 +43,7 @@ export function ScenarioResultsDisplay({
               <div className="text-center p-4 bg-gray-50 rounded border border-gray-200">
                 <p className="text-sm text-gray-600 font-medium mb-2">Original</p>
                 <p
-                  className={`text-4xl font-bold ${results.originalProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
+                  className={`text-4xl font-display font-bold ${results.originalProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
                 >
                   {formatPercentage(results.originalProbability)}
                 </p>
@@ -63,7 +63,7 @@ export function ScenarioResultsDisplay({
               <div className="text-center p-4 bg-blue-50 rounded border border-blue-200">
                 <p className="text-sm text-gray-600 font-medium mb-2">Projected</p>
                 <p
-                  className={`text-4xl font-bold ${results.newProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
+                  className={`text-4xl font-display font-bold ${results.newProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
                 >
                   {formatPercentage(results.newProbability)}
                 </p>
@@ -145,7 +145,7 @@ export function ScenarioResultsDisplay({
 
       <Card className="border-2 border-gray-200">
         <CardHeader className="border-b border-gray-200">
-          <CardTitle className="text-lg font-bold text-gray-900">Scenario Parameters Applied</CardTitle>
+          <CardTitle className="text-lg font-display font-bold text-gray-900">Scenario Parameters Applied</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

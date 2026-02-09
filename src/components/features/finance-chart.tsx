@@ -45,14 +45,14 @@ export function FinanceChart({ finance }: FinanceChartProps) {
             <div className="w-10 h-10 bg-red-700 rounded flex items-center justify-center">
               <DollarSign className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Campaign Finance Overview</span>
+            <span className="text-xl font-display font-bold text-gray-900">Campaign Finance Overview</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-5 bg-green-50 rounded border border-green-200">
               <p className="text-sm text-green-700 font-medium mb-2">Support</p>
-              <p className="text-3xl font-bold text-green-700">
+              <p className="text-3xl font-display font-bold text-green-700">
                 {formatCurrency(finance.totalSupport, true)}
               </p>
               <p className="text-sm text-green-600 mt-2">
@@ -62,7 +62,7 @@ export function FinanceChart({ finance }: FinanceChartProps) {
 
             <div className="text-center p-5 bg-gray-50 rounded border border-gray-200">
               <p className="text-sm text-gray-600 font-medium mb-2">Total Raised</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-display font-bold text-gray-900">
                 {formatCurrency(total, true)}
               </p>
               <p className="text-sm text-gray-500 mt-2">
@@ -72,7 +72,7 @@ export function FinanceChart({ finance }: FinanceChartProps) {
 
             <div className="text-center p-5 bg-red-50 rounded border border-red-200">
               <p className="text-sm text-red-700 font-medium mb-2">Opposition</p>
-              <p className="text-3xl font-bold text-red-700">
+              <p className="text-3xl font-display font-bold text-red-700">
                 {formatCurrency(finance.totalOpposition, true)}
               </p>
               <p className="text-sm text-red-600 mt-2">
@@ -108,7 +108,7 @@ export function FinanceChart({ finance }: FinanceChartProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border-2 border-gray-200">
           <CardHeader className="border-b border-gray-200">
-            <CardTitle className="text-lg font-bold text-gray-900">Funding Distribution</CardTitle>
+            <CardTitle className="text-lg font-display font-bold text-gray-900">Funding Distribution</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="h-64">
@@ -188,7 +188,7 @@ export function FinanceChart({ finance }: FinanceChartProps) {
 
       <Card className="border-2 border-gray-200">
         <CardHeader className="border-b border-gray-200">
-          <CardTitle className="text-lg font-bold text-gray-900">Campaign Committees</CardTitle>
+          <CardTitle className="text-lg font-display font-bold text-gray-900">Campaign Committees</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -234,7 +234,7 @@ export default function DistrictsPage() {
             <Map className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">District Impact Analysis</h1>
+            <h1 className="font-display text-3xl font-bold text-gray-900">District Impact Analysis</h1>
             <p className="text-gray-600 font-medium">
               Understand how proposition passage affects partisan balance across California
             </p>
@@ -348,7 +348,7 @@ export default function DistrictsPage() {
             {(Object.keys(CALIFORNIA_REGIONS) as CaliforniaRegion[]).map((region) => (
               <Card key={region} className="border-2 border-gray-200 hover:border-blue-900 transition-colors">
                 <CardHeader className="border-b border-gray-200">
-                  <CardTitle className="text-lg font-bold text-gray-900">{region}</CardTitle>
+                  <CardTitle className="text-lg font-display font-bold text-gray-900">{region}</CardTitle>
                   <CardDescription className="text-gray-600 font-medium">
                     {CALIFORNIA_REGIONS[region].length} counties
                   </CardDescription>
@@ -403,7 +403,7 @@ export default function DistrictsPage() {
                   <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
                     <BarChart3 className="h-5 w-5 text-white" />
                   </div>
-                  How We Calculate Impact
+                  <span className="font-display">How We Calculate Impact</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
@@ -453,7 +453,7 @@ export default function DistrictsPage() {
                   <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
                     <Info className="h-5 w-5 text-white" />
                   </div>
-                  Understanding the Metrics
+                  <span className="font-display">Understanding the Metrics</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -493,7 +493,7 @@ export default function DistrictsPage() {
 
             <Card className="lg:col-span-2 border-2 border-gray-200">
               <CardHeader className="border-b border-gray-200">
-                <CardTitle className="text-xl font-bold text-gray-900">Disclaimer</CardTitle>
+                <CardTitle className="text-xl font-display font-bold text-gray-900">Disclaimer</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 <p className="text-sm text-gray-600 leading-relaxed">

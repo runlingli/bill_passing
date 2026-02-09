@@ -156,7 +156,7 @@ export function ScenarioBuilder({
             <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
               <Zap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">What-If Scenario Builder</span>
+            <span className="text-xl font-display font-bold text-gray-900">What-If Scenario Builder</span>
           </CardTitle>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={handleReset} className="text-blue-900 hover:bg-blue-50">

@@ -148,7 +148,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
               {proposition.year}
             </Badge>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+          <h1 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-3">
             Proposition {proposition.number}: {proposition.title}
           </h1>
           <p className="text-lg text-gray-600 max-w-4xl">{proposition.summary}</p>

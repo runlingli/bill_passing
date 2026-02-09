@@ -40,12 +40,12 @@ export function PropositionCard({
                   {proposition.category.replace('_', ' ')}
                 </Badge>
               </div>
-              <h3 className="font-bold text-lg text-gray-900">
+              <h3 className="font-display font-bold text-lg text-gray-900">
                 Proposition {proposition.number}
               </h3>
               <p className="text-gray-600 mt-1 text-sm line-clamp-2">{proposition.title}</p>
             </div>
-            <span className="text-4xl font-bold text-gray-200 shrink-0">
+            <span className="text-4xl font-display font-bold text-gray-200 shrink-0">
               {proposition.number}
             </span>
           </div>
@@ -71,7 +71,7 @@ export function PropositionCard({
                 <span className="text-sm font-medium text-gray-700">
                   Passage Probability
                 </span>
-                <span className={`text-2xl font-bold ${prediction.passageProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
+                <span className={`text-2xl font-display font-bold ${prediction.passageProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
                   {formatPercentage(prediction.passageProbability)}
                 </span>
               </div>

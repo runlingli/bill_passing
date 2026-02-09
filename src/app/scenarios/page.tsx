@@ -148,7 +148,7 @@ export default function ScenariosPage() {
             <Zap className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">What-If Scenario Simulator</h1>
+            <h1 className="font-display text-3xl font-bold text-gray-900">What-If Scenario Simulator</h1>
             <p className="text-gray-600 font-medium">
               Explore how different factors might affect proposition outcomes
             </p>
@@ -291,7 +291,7 @@ export default function ScenariosPage() {
         <div className="space-y-6">
           <Card className="border-2 border-gray-200">
             <CardHeader className="border-b border-gray-200">
-              <CardTitle className="text-lg font-bold text-gray-900">Quick Presets</CardTitle>
+              <CardTitle className="text-lg font-display font-bold text-gray-900">Quick Presets</CardTitle>
               <CardDescription className="text-gray-600">
                 Start with a predefined scenario configuration
               </CardDescription>
@@ -315,7 +315,7 @@ export default function ScenariosPage() {
 
           <Card className="border-2 border-gray-200">
             <CardHeader className="border-b border-gray-200">
-              <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <CardTitle className="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
                 <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
                   <Clock className="h-4 w-4 text-white" />
                 </div>
@@ -375,7 +375,7 @@ export default function ScenariosPage() {
           <Card className="border-2 border-gray-200">
             <CardHeader className="pb-2 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <CardTitle className="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
                   <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
                     <Settings2 className="h-4 w-4 text-white" />
                   </div>

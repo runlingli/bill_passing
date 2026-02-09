@@ -108,32 +108,32 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto text-center">
             <div className="flex justify-center mb-6">
               <Badge className="bg-blue-900 text-white border-0 px-6 py-2 text-sm font-semibold">
-                Beta Release - 2026 Election Cycle
+                Beta Release — 2026 Election Cycle
               </Badge>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
+            <h1 className="font-display text-display-xl md:text-6xl font-bold mb-6 text-gray-900">
               California Proposition
               <span className="block text-blue-900 mt-2">
                 Predictor & Analyzer
               </span>
             </h1>
             <p className="text-xl text-gray-700 mb-10 leading-relaxed max-w-3xl mx-auto">
-              Data-driven predictions for statewide ballot measures using machine learning, 
+              Data-driven predictions for statewide ballot measures using machine learning,
               historical voting patterns, campaign finance tracking, and demographic analysis.
             </p>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto">
               {stats.map((stat) => (
                 <div key={stat.label} className="bg-gray-50 border-2 border-gray-200 rounded p-4">
                   <div className="flex items-center justify-center mb-2">
                     <stat.icon className="h-5 w-5 text-blue-900" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                  <div className="text-2xl font-bold text-gray-900 font-display">{stat.value}</div>
                   <div className="text-xs text-gray-600 mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/propositions">
                 <Button size="lg" className="bg-blue-900 text-white hover:bg-blue-800 px-8 py-6 text-lg font-semibold">
@@ -158,11 +158,11 @@ export default function HomePage() {
             <Badge className="mb-4 bg-white text-blue-900 border-2 border-blue-900">
               Platform Features
             </Badge>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="font-display text-display-lg font-bold text-gray-900 mb-4">
               Comprehensive Analysis Tools
             </h2>
             <p className="text-gray-700 text-lg max-w-2xl mx-auto">
-              Our platform combines multiple authoritative data sources to provide accurate 
+              Our platform combines multiple authoritative data sources to provide accurate
               predictions and deep insights into California ballot propositions.
             </p>
           </div>
@@ -175,7 +175,7 @@ export default function HomePage() {
                     <div className={`w-14 h-14 rounded ${feature.color} flex items-center justify-center mb-4`}>
                       <feature.icon className="h-7 w-7 text-white" />
                     </div>
-                    <CardTitle className="text-xl text-gray-900">
+                    <CardTitle className="text-xl text-gray-900 font-display">
                       {feature.title}
                     </CardTitle>
                   </CardHeader>
@@ -196,7 +196,7 @@ export default function HomePage() {
               <Badge className="mb-3 bg-red-700 text-white border-0">
                 Live Tracking
               </Badge>
-              <h2 className="text-3xl font-bold text-gray-900">
+              <h2 className="font-display text-display-md font-bold text-gray-900">
                 2026 Ballot Measures
               </h2>
               <p className="text-gray-600 mt-2">
@@ -215,29 +215,29 @@ export default function HomePage() {
             {upcomingPropositions.map((prop) => (
               <Card key={prop.number} className="hover:shadow-xl transition-shadow bg-white border-2 border-gray-200">
                 <div className="h-2 bg-blue-900" />
-                
+
                 <CardContent className="pt-8">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <Badge className="mb-3 bg-gray-100 text-gray-700 border border-gray-300 text-xs font-semibold">
                         {prop.category}
                       </Badge>
-                      <h3 className="font-bold text-lg text-gray-900">
+                      <h3 className="font-display font-bold text-lg text-gray-900">
                         Proposition {prop.number}
                       </h3>
                       <p className="text-gray-600 mt-1 text-sm">{prop.title}</p>
                     </div>
-                    <span className="text-4xl font-bold text-gray-200">
+                    <span className="text-5xl font-display font-bold text-gray-200">
                       {prop.number}
                     </span>
                   </div>
-                  
+
                   <div className="mt-6 p-4 bg-gray-50 rounded border border-gray-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium text-gray-700">
                         Passage Probability
                       </span>
-                      <span className={`text-2xl font-bold ${prop.prediction >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
+                      <span className={`text-2xl font-display font-bold ${prop.prediction >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
                         {(prop.prediction * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -265,11 +265,11 @@ export default function HomePage() {
             <Badge className="mb-4 bg-white text-gray-700 border-2 border-gray-300">
               Data Sources
             </Badge>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="font-display text-display-md font-bold text-gray-900 mb-4">
               Powered by Official Government Data
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Our predictions are built on publicly available, authoritative data sources 
+              Our predictions are built on publicly available, authoritative data sources
               from California state agencies and federal databases
             </p>
           </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
                 <div className="w-12 h-12 bg-blue-900 rounded flex items-center justify-center mx-auto mb-4">
                   <ExternalLink className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-2">
+                <h3 className="font-display font-bold text-gray-900 mb-2">
                   {source.name}
                 </h3>
                 <p className="text-sm text-gray-600">{source.description}</p>
@@ -298,12 +298,12 @@ export default function HomePage() {
 
       <section className="py-20 bg-blue-900 border-t-4 border-red-700">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">
+          <h2 className="font-display text-display-lg font-bold text-white mb-4">
             Ready to Explore Proposition Predictions?
           </h2>
           <p className="text-blue-100 mb-10 max-w-2xl mx-auto text-lg">
-            Dive into detailed analysis, run what-if scenarios, and understand how 
-            ballot measures might affect California legislative landscape.
+            Dive into detailed analysis, run what-if scenarios, and understand how
+            ballot measures might affect California's legislative landscape.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/propositions">

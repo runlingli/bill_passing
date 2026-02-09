@@ -147,7 +147,7 @@ export default function PropositionsPage() {
             <Badge className="mb-4 bg-blue-900 text-white border-0 px-4 py-1 text-sm font-semibold">
               Ballot Measures Database
             </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               California Propositions
             </h1>
             <p className="text-xl text-gray-700 leading-relaxed">
