@@ -68,6 +68,7 @@ const HISTORICAL_RESULTS: Record<string, HistoricalResult> = {
   // 2025
   '2025-50': { passed: true,  yesPercent: 64.4, noPercent: 35.6, yesVotes: 7453339, noVotes: 4116998, turnout: 0.45 },
   // 2024 — certified results from CA SOS
+  '2024-1':  { passed: true,  yesPercent: 50.2, noPercent: 49.8, yesVotes: 3842872, noVotes: 3812058, turnout: 0.34 },
   '2024-2':  { passed: true,  yesPercent: 59.6, noPercent: 40.4, yesVotes: 8752133, noVotes: 5930567, turnout: 0.76 },
   '2024-3':  { passed: true,  yesPercent: 61.6, noPercent: 38.4, yesVotes: 9002081, noVotes: 5620618, turnout: 0.76 },
   '2024-4':  { passed: true,  yesPercent: 58.9, noPercent: 41.1, yesVotes: 8568373, noVotes: 5976327, turnout: 0.76 },

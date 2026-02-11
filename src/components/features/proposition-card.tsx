@@ -50,8 +50,6 @@ export function PropositionCard({
             </span>
           </div>
 
-          <p className="text-sm text-gray-500 line-clamp-2 mb-4">{proposition.summary}</p>
-
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-blue-900" />
