@@ -1,18 +1,26 @@
 /**
  * California Proposition Data Client
  * Fetches ballot measure information using multiple data sources:
- * 1. California Secretary of State Quick Guide to Props (primary source)
- * 2. Open States API (v3) - For legislative data
+ * 1. California Secretary of State Quick Guide to Props (proposition details)
+ * 2. California Secretary of State Election Results API (vote results)
+ * 3. Open States API (v3) - For legislative data (fallback)
  *
  * Data sources:
  * - https://quickguidetoprops.sos.ca.gov/propositions/{date}
+ * - https://api.sos.ca.gov/returns/ballot-measures
  * - https://v3.openstates.org/
  */
 
 import { Proposition, PropositionCategory, PropositionResult, PropositionStatus } from '@/types';
+import { ballotpediaClient } from './ballotpedia';
 
 // California Secretary of State Quick Guide to Props
 const CA_SOS_QUICK_GUIDE = 'https://quickguidetoprops.sos.ca.gov/propositions';
+
+// California Secretary of State Election Results API
+// Serves the most recently completed statewide election results as JSON
+// No authentication required
+const CA_SOS_RESULTS_API = 'https://api.sos.ca.gov/returns/ballot-measures';
 
 // Open States API for California legislative data
 const OPEN_STATES_API = 'https://v3.openstates.org';
@@ -40,97 +48,24 @@ export interface ElectionResult {
   countyResults?: Record<string, { yes: number; no: number }>;
 }
 
-// Known California election dates for statewide propositions
-const CA_ELECTION_DATES: Record<number, string[]> = {
-  2026: ['2026-11-03', '2026-06-02'], // Gubernatorial year
-  2025: ['2025-11-04'], // Off-year special election
-  2024: ['2024-11-05', '2024-03-05'],
-  2022: ['2022-11-08'],
-  2021: ['2021-09-14'],
-  2020: ['2020-11-03', '2020-03-03'],
-  2018: ['2018-11-06', '2018-06-05'],
-  2016: ['2016-11-08'],
-};
-
-// Historical proposition results with vote data
-// Source: California Secretary of State official certified results
-// https://www.sos.ca.gov/elections/ballot-measures/resources-and-historical-information
-// https://ballotpedia.org/List_of_California_ballot_propositions
-interface HistoricalResult {
-  passed: boolean;
-  yesPercent: number;
-  noPercent: number;
+// Parsed result from the CA SOS Election Results API
+interface ApiElectionResult {
+  name: string;
   yesVotes: number;
   noVotes: number;
-  turnout: number;
+  yesPercent: number;
+  noPercent: number;
+  passed: boolean;
 }
-const HISTORICAL_RESULTS: Record<string, HistoricalResult> = {
-  // 2025
-  '2025-50': { passed: true,  yesPercent: 64.4, noPercent: 35.6, yesVotes: 7453339, noVotes: 4116998, turnout: 0.45 },
-  // 2024 — certified results from CA SOS
-  '2024-1':  { passed: true,  yesPercent: 50.2, noPercent: 49.8, yesVotes: 3842872, noVotes: 3812058, turnout: 0.34 },
-  '2024-2':  { passed: true,  yesPercent: 59.6, noPercent: 40.4, yesVotes: 8752133, noVotes: 5930567, turnout: 0.76 },
-  '2024-3':  { passed: true,  yesPercent: 61.6, noPercent: 38.4, yesVotes: 9002081, noVotes: 5620618, turnout: 0.76 },
-  '2024-4':  { passed: true,  yesPercent: 58.9, noPercent: 41.1, yesVotes: 8568373, noVotes: 5976327, turnout: 0.76 },
-  '2024-5':  { passed: false, yesPercent: 54.6, noPercent: 45.4, yesVotes: 7877946, noVotes: 6549654, turnout: 0.75 },
-  '2024-6':  { passed: true,  yesPercent: 55.4, noPercent: 44.6, yesVotes: 7980891, noVotes: 6425809, turnout: 0.75 },
-  '2024-32': { passed: false, yesPercent: 47.5, noPercent: 52.5, yesVotes: 6837979, noVotes: 7551321, turnout: 0.75 },
-  '2024-33': { passed: false, yesPercent: 37.7, noPercent: 62.3, yesVotes: 5410270, noVotes: 8934430, turnout: 0.75 },
-  '2024-34': { passed: true,  yesPercent: 55.7, noPercent: 44.3, yesVotes: 7909428, noVotes: 6295272, turnout: 0.74 },
-  '2024-35': { passed: true,  yesPercent: 73.4, noPercent: 26.6, yesVotes: 10549403, noVotes: 3822297, turnout: 0.75 },
-  '2024-36': { passed: true,  yesPercent: 71.5, noPercent: 28.5, yesVotes: 10390320, noVotes: 4137380, turnout: 0.76 },
-  // 2022 — certified results from CA SOS
-  '2022-1':  { passed: true,  yesPercent: 66.9, noPercent: 33.1, yesVotes: 7780795, noVotes: 3856865, turnout: 0.60 },
-  '2022-26': { passed: false, yesPercent: 33.3, noPercent: 66.7, yesVotes: 3754023, noVotes: 7507843, turnout: 0.58 },
-  '2022-27': { passed: false, yesPercent: 33.1, noPercent: 66.9, yesVotes: 3759076, noVotes: 7596804, turnout: 0.59 },
-  '2022-28': { passed: true,  yesPercent: 63.0, noPercent: 37.0, yesVotes: 7093662, noVotes: 4167838, turnout: 0.58 },
-  '2022-29': { passed: false, yesPercent: 37.5, noPercent: 62.5, yesVotes: 4146697, noVotes: 6916303, turnout: 0.57 },
-  '2022-30': { passed: false, yesPercent: 42.1, noPercent: 57.9, yesVotes: 4716987, noVotes: 6493813, turnout: 0.58 },
-  '2022-31': { passed: false, yesPercent: 36.8, noPercent: 63.2, yesVotes: 4191488, noVotes: 7190312, turnout: 0.59 },
-  // 2020 — certified results from CA SOS
-  '2020-14': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 8686176, noVotes: 8314424, turnout: 0.81 },
-  '2020-15': { passed: false, yesPercent: 48.0, noPercent: 52.0, yesVotes: 8012773, noVotes: 8682727, turnout: 0.80 },
-  '2020-16': { passed: false, yesPercent: 42.8, noPercent: 57.2, yesVotes: 7107779, noVotes: 9500721, turnout: 0.79 },
-  '2020-17': { passed: true,  yesPercent: 58.6, noPercent: 41.4, yesVotes: 9794522, noVotes: 6916878, turnout: 0.80 },
-  '2020-18': { passed: false, yesPercent: 44.3, noPercent: 55.7, yesVotes: 7324009, noVotes: 9212891, turnout: 0.79 },
-  '2020-19': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 8468652, noVotes: 8098048, turnout: 0.79 },
-  '2020-20': { passed: false, yesPercent: 38.0, noPercent: 62.0, yesVotes: 6262364, noVotes: 10218636, turnout: 0.79 },
-  '2020-21': { passed: false, yesPercent: 40.2, noPercent: 59.8, yesVotes: 6618893, noVotes: 9853207, turnout: 0.79 },
-  '2020-22': { passed: true,  yesPercent: 58.6, noPercent: 41.4, yesVotes: 9958425, noVotes: 7026975, turnout: 0.81 },
-  '2020-23': { passed: false, yesPercent: 36.4, noPercent: 63.6, yesVotes: 5960804, noVotes: 10413396, turnout: 0.78 },
-  '2020-24': { passed: true,  yesPercent: 56.2, noPercent: 43.8, yesVotes: 9384109, noVotes: 7314491, turnout: 0.80 },
-  '2020-25': { passed: false, yesPercent: 43.6, noPercent: 56.4, yesVotes: 7173768, noVotes: 9280332, turnout: 0.79 },
-  // 2018 — certified results from CA SOS
-  '2018-1':  { passed: true,  yesPercent: 54.1, noPercent: 45.9, yesVotes: 6746431, noVotes: 5731469, turnout: 0.65 },
-  '2018-2':  { passed: true,  yesPercent: 56.9, noPercent: 43.1, yesVotes: 7033785, noVotes: 5327615, turnout: 0.64 },
-  '2018-3':  { passed: true,  yesPercent: 52.7, noPercent: 47.3, yesVotes: 6470665, noVotes: 5808135, turnout: 0.64 },
-  '2018-4':  { passed: true,  yesPercent: 60.8, noPercent: 39.2, yesVotes: 7452024, noVotes: 4798976, turnout: 0.64 },
-  '2018-5':  { passed: false, yesPercent: 40.4, noPercent: 59.6, yesVotes: 4916893, noVotes: 7243607, turnout: 0.63 },
-  '2018-6':  { passed: false, yesPercent: 43.6, noPercent: 56.4, yesVotes: 5524072, noVotes: 7148028, turnout: 0.66 },
-  '2018-7':  { passed: true,  yesPercent: 59.8, noPercent: 40.2, yesVotes: 7371962, noVotes: 4957838, turnout: 0.64 },
-  '2018-8':  { passed: false, yesPercent: 36.4, noPercent: 63.6, yesVotes: 4403449, noVotes: 7697051, turnout: 0.63 },
-  '2018-10': { passed: false, yesPercent: 40.8, noPercent: 59.2, yesVotes: 4978332, noVotes: 7232168, turnout: 0.63 },
-  '2018-11': { passed: true,  yesPercent: 52.9, noPercent: 47.1, yesVotes: 6399965, noVotes: 5695035, turnout: 0.63 },
-  '2018-12': { passed: true,  yesPercent: 62.7, noPercent: 37.3, yesVotes: 7639637, noVotes: 4541363, turnout: 0.63 },
-  // 2016 — certified results from CA SOS
-  '2016-51': { passed: true,  yesPercent: 54.2, noPercent: 45.8, yesVotes: 7740378, noVotes: 6537422, turnout: 0.75 },
-  '2016-52': { passed: true,  yesPercent: 69.6, noPercent: 30.4, yesVotes: 9765862, noVotes: 4271638, turnout: 0.74 },
-  '2016-53': { passed: false, yesPercent: 47.5, noPercent: 52.5, yesVotes: 6534563, noVotes: 7220237, turnout: 0.72 },
-  '2016-54': { passed: true,  yesPercent: 75.4, noPercent: 24.6, yesVotes: 10517118, noVotes: 3437882, turnout: 0.73 },
-  '2016-55': { passed: true,  yesPercent: 63.3, noPercent: 36.7, yesVotes: 8890124, noVotes: 5148876, turnout: 0.74 },
-  '2016-56': { passed: true,  yesPercent: 63.5, noPercent: 36.5, yesVotes: 8918944, noVotes: 5118056, turnout: 0.74 },
-  '2016-57': { passed: true,  yesPercent: 64.5, noPercent: 35.5, yesVotes: 9003654, noVotes: 4959346, turnout: 0.73 },
-  '2016-58': { passed: true,  yesPercent: 73.5, noPercent: 26.5, yesVotes: 10285700, noVotes: 3715300, turnout: 0.73 },
-  '2016-59': { passed: false, yesPercent: 53.2, noPercent: 46.8, yesVotes: 7088652, noVotes: 6235148, turnout: 0.70 },
-  '2016-60': { passed: false, yesPercent: 46.0, noPercent: 54.0, yesVotes: 6190770, noVotes: 7275830, turnout: 0.71 },
-  '2016-61': { passed: false, yesPercent: 46.3, noPercent: 53.7, yesVotes: 6284973, noVotes: 7288827, turnout: 0.71 },
-  '2016-62': { passed: false, yesPercent: 46.9, noPercent: 53.1, yesVotes: 6468082, noVotes: 7329018, turnout: 0.72 },
-  '2016-63': { passed: true,  yesPercent: 63.1, noPercent: 36.9, yesVotes: 8819811, noVotes: 5163789, turnout: 0.73 },
-  '2016-64': { passed: true,  yesPercent: 57.1, noPercent: 42.9, yesVotes: 8006306, noVotes: 6007694, turnout: 0.74 },
-  '2016-65': { passed: false, yesPercent: 45.8, noPercent: 54.2, yesVotes: 6163588, noVotes: 7289612, turnout: 0.71 },
-  '2016-66': { passed: true,  yesPercent: 51.1, noPercent: 48.9, yesVotes: 7054978, noVotes: 6744322, turnout: 0.72 },
-  '2016-67': { passed: true,  yesPercent: 53.0, noPercent: 47.0, yesVotes: 7334319, noVotes: 6501581, turnout: 0.72 },
-};
+
+// Parsed data from Quick Guide proposition detail page
+interface PropositionDetailData {
+  summary: string;
+  fiscalImpact?: string;
+  supporters: string[];
+  opponents: string[];
+  type?: string;
+}
 
 interface OpenStatesBill {
   id: string;
@@ -150,50 +85,238 @@ interface OpenStatesBill {
 
 class CASosClient {
   private openStatesApiKey: string | undefined;
+  private resultsCache: { data: Map<string, ApiElectionResult>; fetchedAt: number } | null = null;
+  private static RESULTS_CACHE_TTL = 300_000; // 5 minutes
 
   constructor() {
     this.openStatesApiKey = process.env.OPEN_STATES_API_KEY;
   }
 
+  // ============ CA SOS Election Results API ============
+
   /**
-   * Determine the correct status for a proposition based on election date and known results
+   * Fetch election results from CA SOS Election Results API
+   * Endpoint: GET https://api.sos.ca.gov/returns/ballot-measures
+   * Response: { raceTitle, Reporting, ReportingTime, "ballot-measures": [{ Name, Number, yesVotes, yesPercent, noVotes, noPercent }] }
    */
-  private determineStatus(year: number, number: string, electionDate: string): PropositionStatus {
-    const isPast = new Date(electionDate) < new Date();
-
-    if (!isPast) {
-      return 'upcoming';
+  private async fetchElectionResults(): Promise<Map<string, ApiElectionResult>> {
+    if (this.resultsCache && Date.now() - this.resultsCache.fetchedAt < CASosClient.RESULTS_CACHE_TTL) {
+      return this.resultsCache.data;
     }
 
-    // Look up historical result
-    const key = `${year}-${number}`;
-    if (key in HISTORICAL_RESULTS) {
-      return HISTORICAL_RESULTS[key].passed ? 'passed' : 'failed';
-    }
+    try {
+      console.log('[CA-SOS] Fetching election results from CA SOS API');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(CA_SOS_RESULTS_API, {
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
 
-    // Default to 'passed' for unknown past propositions (most pass historically)
-    // This is a fallback - ideally we'd have all results in HISTORICAL_RESULTS
-    return 'passed';
+      if (!response.ok) {
+        console.log(`[CA-SOS] Election Results API returned ${response.status}`);
+        return new Map();
+      }
+
+      const data = await response.json();
+      const results = new Map<string, ApiElectionResult>();
+
+      for (const measure of data['ballot-measures'] || []) {
+        const yesVotes = parseInt(String(measure.yesVotes).replace(/,/g, ''));
+        const noVotes = parseInt(String(measure.noVotes).replace(/,/g, ''));
+        const yesPercent = parseFloat(measure.yesPercent);
+        const noPercent = parseFloat(measure.noPercent);
+
+        results.set(String(measure.Number), {
+          name: measure.Name || '',
+          yesVotes,
+          noVotes,
+          yesPercent,
+          noPercent,
+          passed: yesPercent > 50,
+        });
+      }
+
+      console.log(`[CA-SOS] Got results for ${results.size} ballot measures from API`);
+      this.resultsCache = { data: results, fetchedAt: Date.now() };
+      return results;
+    } catch (error) {
+      console.error('[CA-SOS] Error fetching election results:', error);
+      return new Map();
+    }
   }
 
   /**
-   * Look up historical vote data and return a PropositionResult if available
+   * Fetch county-level election results from CA SOS API
+   * Endpoint: GET https://api.sos.ca.gov/returns/ballot-measures/county/{county-name}
+   * Response: { raceTitle, Reporting, ReportingTime, "ballot-measures": [{ Name, Number, yesVotes, yesPercent, noVotes, noPercent }] }
    */
-  private getResult(year: number, number: string): PropositionResult | undefined {
-    const key = `${year}-${number}`;
-    const data = HISTORICAL_RESULTS[key];
-    if (!data) return undefined;
+  async fetchCountyResults(countyName: string): Promise<Map<string, { yes: number; no: number }>> {
+    try {
+      const slug = countyName.toLowerCase().replace(/\s+/g, '-');
+      const response = await fetch(`${CA_SOS_RESULTS_API}/county/${slug}`, {
+        headers: { 'Accept': 'application/json' },
+      });
 
+      if (!response.ok) return new Map();
+
+      const data = await response.json();
+      const results = new Map<string, { yes: number; no: number }>();
+
+      for (const measure of data['ballot-measures'] || []) {
+        results.set(String(measure.Number), {
+          yes: parseInt(String(measure.yesVotes).replace(/,/g, '')),
+          no: parseInt(String(measure.noVotes).replace(/,/g, '')),
+        });
+      }
+
+      return results;
+    } catch {
+      return new Map();
+    }
+  }
+
+  // ============ Quick Guide Detail Pages ============
+
+  /**
+   * Fetch detailed proposition data from Quick Guide detail page
+   * URL: https://quickguidetoprops.sos.ca.gov/propositions/{date}/{number}
+   * Returns: summary, fiscal impact, supporters, opponents, proposition type
+   */
+  private async fetchPropositionDetail(electionDate: string, number: string): Promise<PropositionDetailData | null> {
+    const url = `${CA_SOS_QUICK_GUIDE}/${electionDate}/${number}`;
+    console.log(`[CA-SOS] Fetching detail page: ${url}`);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
+        },
+      });
+
+      if (!response.ok) return null;
+
+      const html = await response.text();
+      return this.parseDetailPage(html);
+    } catch (error) {
+      console.error(`[CA-SOS] Error fetching detail for prop ${number}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse Quick Guide detail page HTML for rich proposition data
+   */
+  private parseDetailPage(html: string): PropositionDetailData {
+    // Extract summary/description from common page structures
+    let summary = '';
+    const summaryPatterns = [
+      /<div[^>]*class="[^"]*(?:summary|description|measure-text|prop-details)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<section[^>]*(?:id|class)="[^"]*(?:summary|overview|description)[^"]*"[^>]*>([\s\S]*?)<\/section>/i,
+      /<h[12][^>]*>[\s\S]*?<\/h[12]>\s*(?:<[^>]+>)*\s*<p[^>]*>([\s\S]*?)<\/p>/i,
+    ];
+    for (const pattern of summaryPatterns) {
+      const match = html.match(pattern);
+      if (match) {
+        const text = match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        if (text.length > 20) { summary = text; break; }
+      }
+    }
+
+    // Extract fiscal impact
+    let fiscalImpact: string | undefined;
+    const fiscalPatterns = [
+      /(?:fiscal\s+(?:impact|effect))[^<]*<[^>]*>([\s\S]*?)(?:<\/(?:div|section|p)>)/i,
+      /(?:fiscal\s+(?:impact|effect))[:\s]*([\s\S]*?)(?:<\/(?:div|p|li)>)/i,
+      /(?:fiscal\s+(?:impact|effect))\s*<\/[^>]+>\s*<[^>]+>([\s\S]*?)<\//i,
+    ];
+    for (const pattern of fiscalPatterns) {
+      const match = html.match(pattern);
+      if (match) {
+        const text = match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        if (text.length > 10) { fiscalImpact = text; break; }
+      }
+    }
+
+    // Extract supporters
+    const supporters = this.extractStakeholders(html, 'support');
+
+    // Extract opponents
+    const opponents = this.extractStakeholders(html, 'oppose');
+
+    // Extract proposition type
+    let type: string | undefined;
+    const typeMatch = html.match(
+      /(?:Legislative\s+(?:Statute|Constitutional\s+Amendment)|Initiative\s+(?:Statute|Constitutional\s+Amendment)|Referendum)/i
+    );
+    if (typeMatch) {
+      type = typeMatch[0];
+    }
+
+    return { summary, fiscalImpact, supporters, opponents, type };
+  }
+
+  /**
+   * Extract supporter or opponent names from HTML lists
+   */
+  private extractStakeholders(html: string, position: 'support' | 'oppose'): string[] {
+    const names: string[] = [];
+    const patterns = position === 'support'
+      ? [/(?:support(?:ers?|ing)?|proponents?|yes\s+on)[^<]*[\s\S]*?<(?:ul|ol)[^>]*>([\s\S]*?)<\/(?:ul|ol)>/i]
+      : [/(?:oppos(?:ition|e|ing)|opponents?|no\s+on)[^<]*[\s\S]*?<(?:ul|ol)[^>]*>([\s\S]*?)<\/(?:ul|ol)>/i];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match) {
+        const items = match[1].match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
+        for (const item of items) {
+          const text = item.replace(/<[^>]+>/g, '').trim();
+          if (text && text.length > 2) names.push(text);
+        }
+        if (names.length > 0) break;
+      }
+    }
+
+    return names;
+  }
+
+  // ============ Status & Result Building ============
+
+  /**
+   * Determine proposition status from election date and API results
+   */
+  private determineStatus(electionDate: string, apiResult?: ApiElectionResult): PropositionStatus {
+    // Parse YYYY-MM-DD as local time to avoid UTC timezone shift
+    const parts = electionDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const electionDay = parts
+      ? new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]) + 1) // +1: polls close EOD
+      : new Date(electionDate);
+    const isPast = electionDay < new Date();
+    if (!isPast) return 'upcoming';
+    if (apiResult) return apiResult.passed ? 'passed' : 'failed';
+    // Fallback for past elections without CA SOS API data.
+    // Ballotpedia enrichment in fetchFromCASOS will correct this if results are available.
+    return 'active';
+  }
+
+  /**
+   * Build a PropositionResult from CA SOS API data
+   */
+  private buildResult(apiResult: ApiElectionResult): PropositionResult {
     return {
-      passed: data.passed,
-      yesPercentage: data.yesPercent,
-      noPercentage: data.noPercent,
-      yesVotes: data.yesVotes,
-      noVotes: data.noVotes,
-      totalVotes: data.yesVotes + data.noVotes,
-      turnout: data.turnout,
+      passed: apiResult.passed,
+      yesPercentage: apiResult.yesPercent,
+      noPercentage: apiResult.noPercent,
+      yesVotes: apiResult.yesVotes,
+      noVotes: apiResult.noVotes,
+      totalVotes: apiResult.yesVotes + apiResult.noVotes,
+      turnout: 0, // Not available from the Election Results API
     };
   }
+
+  // ============ Main Data Fetching ============
 
   /**
    * Get all propositions for a given year
@@ -211,6 +334,14 @@ class CASosClient {
       return propositions;
     }
 
+    // Try Ballotpedia for upcoming measures (e.g. future elections not yet on Quick Guide)
+    propositions = await this.fetchUpcomingFromBallotpedia(year);
+
+    if (propositions.length > 0) {
+      console.log(`[CA-SOS] Found ${propositions.length} propositions from Ballotpedia (upcoming)`);
+      return propositions;
+    }
+
     // Try Open States API as fallback
     propositions = await this.fetchFromOpenStates(year);
 
@@ -225,47 +356,110 @@ class CASosClient {
 
   /**
    * Fetch propositions from California Secretary of State Quick Guide
+   * Also enriches with election results from the CA SOS Election Results API,
+   * falling back to Ballotpedia scraping for historical elections.
    */
   private async fetchFromCASOS(year: number): Promise<Proposition[]> {
-    const electionDates = CA_ELECTION_DATES[year] || this.generateElectionDates(year);
-    const allPropositions: Proposition[] = [];
+    const electionDates = this.generateElectionDates(year);
 
-    for (const electionDate of electionDates) {
-      const url = `${CA_SOS_QUICK_GUIDE}/${electionDate}`;
-      console.log(`[CA-SOS] Fetching from CA SOS: ${url}`);
-
-      try {
-        const response = await fetch(url, {
-          headers: {
-            'Accept': 'text/html',
-            'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
-          },
-        });
-
-        console.log(`[CA-SOS] CA SOS response status: ${response.status}`);
-
-        if (!response.ok) {
-          console.log(`[CA-SOS] CA SOS returned ${response.status} for ${electionDate}`);
-          continue;
+    // Fetch election results (CA SOS API + Ballotpedia) and Quick Guide pages in parallel
+    const emptyBpResults = { results: new Map<string, PropositionResult>(), statuses: new Map<string, boolean>() };
+    const [apiResults, bpData, ...htmlResults] = await Promise.all([
+      this.fetchElectionResults().catch(() => new Map<string, ApiElectionResult>()),
+      ballotpediaClient.fetchYearResults(year).catch(() => emptyBpResults),
+      ...electionDates.map(async (electionDate) => {
+        const url = `${CA_SOS_QUICK_GUIDE}/${electionDate}`;
+        console.log(`[CA-SOS] Fetching from CA SOS: ${url}`);
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'Accept': 'text/html',
+              'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
+            },
+          });
+          console.log(`[CA-SOS] CA SOS response status: ${response.status} for ${electionDate}`);
+          if (!response.ok) return { html: '', electionDate };
+          return { html: await response.text(), electionDate };
+        } catch (error) {
+          console.error(`[CA-SOS] Error fetching CA SOS for ${electionDate}:`, error);
+          return { html: '', electionDate };
         }
+      }),
+    ]);
 
-        const html = await response.text();
-        const propositions = this.parseCASOSHtml(html, year, electionDate);
-        console.log(`[CA-SOS] Parsed ${propositions.length} propositions from ${electionDate}`);
-        allPropositions.push(...propositions);
-      } catch (error) {
-        console.error(`[CA-SOS] Error fetching from CA SOS for ${electionDate}:`, error);
+    const allPropositions: Proposition[] = [];
+    for (const { html, electionDate } of htmlResults) {
+      if (!html) continue;
+      const propositions = this.parseCASOSHtml(html, year, electionDate, apiResults);
+      console.log(`[CA-SOS] Parsed ${propositions.length} propositions from ${electionDate}`);
+
+      // Enrich propositions that lack CA SOS API results with Ballotpedia data
+      for (const prop of propositions) {
+        if (!prop.result) {
+          // Try full results with vote data first (available for ~2022+ on Ballotpedia)
+          if (bpData.results.has(prop.number)) {
+            prop.result = bpData.results.get(prop.number)!;
+            prop.status = prop.result.passed ? 'passed' : 'failed';
+          }
+          // Fall back to pass/fail status only (older years without vote counts)
+          else if (bpData.statuses.has(prop.number)) {
+            prop.status = bpData.statuses.get(prop.number) ? 'passed' : 'failed';
+          }
+        }
       }
+
+      allPropositions.push(...propositions);
     }
 
     return allPropositions;
   }
 
   /**
+   * Fetch upcoming measures from Ballotpedia for years where the Quick Guide
+   * doesn't have data yet (e.g. future elections).
+   * Ballotpedia lists confirmed/qualified measures with titles but no proposition numbers.
+   * Uses the legislative bill number (e.g. "SB 42") as the identifier.
+   */
+  private async fetchUpcomingFromBallotpedia(year: number): Promise<Proposition[]> {
+    try {
+      const measures = await ballotpediaClient.fetchUpcomingMeasures(year);
+      if (measures.length === 0) return [];
+
+      // Compute the November general election date for this year
+      const electionDate = this.generateElectionDates(year)[0];
+
+      return measures.map((measure) => {
+        // Use the legislative bill number without spaces (e.g. "SB42", "SCA1")
+        // Keeps ID format as "YEAR-NUMBER" without extra dashes
+        const number = (measure.billNumber || measure.type).replace(/\s+/g, '');
+        return {
+          id: `${year}-${number}`,
+          number,
+          year,
+          electionDate,
+          title: measure.title,
+          summary: measure.description,
+          status: 'upcoming' as PropositionStatus,
+          category: this.inferCategory(measure.title + ' ' + measure.subject),
+        };
+      });
+    } catch (error) {
+      console.error(`[CA-SOS] Error fetching upcoming from Ballotpedia for ${year}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Parse HTML from CA SOS Quick Guide to extract propositions
    * HTML structure: <a href=".../propositions/DATE/NUMBER">...<h2>TITLE</h2></a>
+   * Enriches with vote results from the Election Results API when available
    */
-  private parseCASOSHtml(html: string, year: number, electionDate: string): Proposition[] {
+  private parseCASOSHtml(
+    html: string,
+    year: number,
+    electionDate: string,
+    apiResults: Map<string, ApiElectionResult>
+  ): Proposition[] {
     const propositions: Proposition[] = [];
 
     // Match proposition URLs and extract the number
@@ -287,16 +481,19 @@ class CASosClient {
       // Clean up the title
       title = this.cleanTitle(title, number);
 
+      // Look up election results from API
+      const apiResult = apiResults.get(number);
+
       const proposition: Proposition = {
         id: `${year}-${number}`,
         number,
         year,
         electionDate,
         title,
-        summary: title,
-        status: this.determineStatus(year, number, electionDate),
+        summary: title, // Enriched when detail page is fetched via getProposition()
+        status: this.determineStatus(electionDate, apiResult),
         category: this.inferCategory(title),
-        result: this.getResult(year, number),
+        result: apiResult ? this.buildResult(apiResult) : undefined,
       };
 
       propositions.push(proposition);
@@ -306,42 +503,41 @@ class CASosClient {
   }
 
   /**
-   * Generate election dates for a given year
+   * Compute the first Tuesday after the first Monday in a given month/year.
+   * This is the standard US election date formula (Nov) and CA primary formula (Jun/Mar).
+   */
+  private firstTuesdayAfterFirstMonday(year: number, month: number): number {
+    const first = new Date(year, month, 1);
+    const dow = first.getDay();
+    // First Monday: day offset from the 1st
+    // Sun(0)->2, Mon(1)->1, Tue(2)->7, Wed(3)->6, Thu(4)->5, Fri(5)->4, Sat(6)->3
+    const firstMonday = 1 + ((8 - dow) % 7);
+    return firstMonday + 1; // Tuesday after
+  }
+
+  /**
+   * Generate candidate election dates for a given year.
+   * Tries November + primary months (March, June) + September for special elections.
+   * The Quick Guide returns 404 for non-existent dates, so extra candidates are harmless.
    */
   private generateElectionDates(year: number): string[] {
+    const fmt = (m: number, d: number) =>
+      `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
     const dates: string[] = [];
 
-    // November general election (first Tuesday after first Monday)
-    // This is typically between Nov 2-8
-    const novFirst = new Date(year, 10, 1); // November 1
-    const dayOfWeek = novFirst.getDay();
-    let novElection: number;
+    // November general election (always)
+    dates.push(fmt(11, this.firstTuesdayAfterFirstMonday(year, 10)));
 
-    if (dayOfWeek <= 1) {
-      // Sunday(0) or Monday(1) - election is Nov 2 or Nov 3
-      novElection = dayOfWeek === 0 ? 3 : 2;
-    } else {
-      // Tuesday(2) through Saturday(6) - next week
-      novElection = 9 - dayOfWeek;
+    // Even years have a primary — CA uses either March or June depending on the cycle
+    if (year % 2 === 0) {
+      dates.push(fmt(6, this.firstTuesdayAfterFirstMonday(year, 5)));  // June primary
+      dates.push(fmt(3, this.firstTuesdayAfterFirstMonday(year, 2)));  // March primary
     }
 
-    dates.push(`${year}-11-${String(novElection).padStart(2, '0')}`);
-
-    // March primary (first Tuesday in March) - only in presidential/gubernatorial years
-    if (year % 4 === 0 || year % 4 === 2) {
-      const marFirst = new Date(year, 2, 1); // March 1
-      const marDayOfWeek = marFirst.getDay();
-      let marElection: number;
-
-      if (marDayOfWeek === 2) {
-        marElection = 1; // March 1 is Tuesday
-      } else if (marDayOfWeek < 2) {
-        marElection = 3 - marDayOfWeek;
-      } else {
-        marElection = 10 - marDayOfWeek;
-      }
-
-      dates.push(`${year}-03-${String(marElection).padStart(2, '0')}`);
+    // Odd years may have special / recall elections in September
+    if (year % 2 === 1) {
+      dates.push(fmt(9, this.firstTuesdayAfterFirstMonday(year, 8)));
     }
 
     return dates;
@@ -388,9 +584,12 @@ class CASosClient {
         return [];
       }
 
+      // Fetch election results to enrich Open States data
+      const apiResults = await this.fetchElectionResults();
+
       // Transform Open States bills to propositions
       const propositions = data.results
-        .map((bill: OpenStatesBill, index: number) => this.transformOpenStatesBill(bill, year, index));
+        .map((bill: OpenStatesBill, index: number) => this.transformOpenStatesBill(bill, year, index, apiResults));
 
       return propositions;
     } catch (error) {
@@ -400,48 +599,76 @@ class CASosClient {
   }
 
   /**
-   * Get a specific proposition
+   * Get a specific proposition, enriched with detail page data
    */
   async getProposition(year: number, number: string): Promise<Proposition | null> {
     const propositions = await this.getPropositionsByYear(year);
-    return propositions.find(p => p.number === number) || null;
+    const prop = propositions.find(p => p.number === number);
+    if (!prop) return null;
+
+    // Enrich with detail page data from Quick Guide
+    const detail = await this.fetchPropositionDetail(prop.electionDate, number);
+    if (detail) {
+      if (detail.summary && detail.summary.length > prop.summary.length) {
+        prop.summary = detail.summary;
+      }
+      if (detail.supporters?.length) {
+        prop.sponsors = detail.supporters;
+      }
+      if (detail.opponents?.length) {
+        prop.opponents = detail.opponents;
+      }
+    }
+
+    return prop;
   }
 
   /**
-   * Get election results - not directly available from these APIs
+   * Get election results for a specific measure from the CA SOS API
    */
-  async getElectionResults(_year: number, _measureNumber: string): Promise<ElectionResult | null> {
-    // Election results would need a different data source
-    // California Secretary of State provides historical results but not via API
-    return null;
+  async getElectionResults(_year: number, measureNumber: string): Promise<ElectionResult | null> {
+    const apiResults = await this.fetchElectionResults();
+    const result = apiResults.get(measureNumber);
+    if (!result) return null;
+
+    return {
+      measureNumber,
+      year: _year,
+      yesVotes: result.yesVotes,
+      noVotes: result.noVotes,
+      yesPercentage: result.yesPercent,
+      noPercentage: result.noPercent,
+      totalVotes: result.yesVotes + result.noVotes,
+      passed: result.passed,
+    };
   }
 
   /**
    * Get historical results for similar propositions by category
    */
   async getHistoricalResults(_category: PropositionCategory, _years = 10): Promise<ElectionResult[]> {
-    // Historical results not available from these APIs
+    // The CA SOS Election Results API only serves the most recent election.
+    // Historical results are not available via API (only in PDFs).
     return [];
   }
 
   /**
    * Get all available years with proposition data
-   * Includes both regular election years (even years) and special election years (odd years)
+   * Includes even years (regular elections) and recent odd years (potential special elections)
    */
   async getAvailableYears(): Promise<number[]> {
     const currentYear = new Date().getFullYear();
     const years: number[] = [];
 
-    // Include all years that have known election dates
     for (let y = currentYear + 1; y >= currentYear - 10; y--) {
-      // Include year if it has election dates configured OR if it's an even year (regular elections)
-      if (CA_ELECTION_DATES[y] || y % 2 === 0) {
+      // Even years always have regular elections
+      // Include recent odd years for potential special elections
+      if (y % 2 === 0 || y >= currentYear - 1) {
         years.push(y);
       }
     }
 
-    // Remove duplicates and sort descending
-    return [...new Set(years)].sort((a, b) => b - a);
+    return years.sort((a, b) => b - a);
   }
 
   /**
@@ -450,14 +677,18 @@ class CASosClient {
   private transformOpenStatesBill(
     bill: OpenStatesBill,
     year: number,
-    index: number
+    index: number,
+    apiResults: Map<string, ApiElectionResult>
   ): Proposition {
     // Extract proposition number from identifier or title
     const propMatch = bill.identifier.match(/(\d+)/) || bill.title.match(/Proposition\s+(\d+)/i);
     const number = propMatch ? propMatch[1] : String(index + 1);
 
-    // Determine election date (November of election year)
-    const electionDate = `${year}-11-05`; // First Tuesday after first Monday
+    // Determine election date
+    const electionDate = this.generateElectionDates(year)[0];
+
+    // Look up election results from API
+    const apiResult = apiResults.get(number);
 
     const proposition: Proposition = {
       id: `${year}-${number}`,
@@ -467,9 +698,9 @@ class CASosClient {
       title: bill.title,
       summary: bill.abstract || bill.title,
       fullText: undefined,
-      status: this.determineStatus(year, number, electionDate),
+      status: this.determineStatus(electionDate, apiResult),
       category: this.inferCategoryFromSubjects(bill.subject) || this.inferCategory(bill.title),
-      result: this.getResult(year, number),
+      result: apiResult ? this.buildResult(apiResult) : undefined,
     };
 
     // Only add sponsors if available

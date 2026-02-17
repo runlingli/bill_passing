@@ -10,7 +10,6 @@ import {
   CardContent,
   Badge,
   Button,
-  Progress,
   Select,
   SelectTrigger,
   SelectValue,
@@ -37,81 +36,90 @@ export default function PredictionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPrediction, setSelectedPrediction] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'probability' | 'confidence'>('probability');
+  const [sortBy, setSortBy] = useState<'probability' | 'dataQuality' | 'number'>('number');
 
+  // Fetch upcoming propositions and their predictions
   useEffect(() => {
-    const fetchPredictions = async () => {
+    const fetchUpcomingPredictions = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch upcoming propositions from 2025 and 2026
-        const currentYear = new Date().getFullYear();
-        const yearsToFetch = [currentYear, currentYear + 1];
+        // Fetch available years from the API
+        const yearsResponse = await fetch('/api/propositions/years');
+        const yearsData: ApiResponse<number[]> = await yearsResponse.json();
 
-        const allPropositions: Proposition[] = [];
-
-        for (const year of yearsToFetch) {
-          const response = await fetch(`/api/propositions?year=${year}`);
-          const data: ApiResponse<Proposition[]> = await response.json();
-
-          if (data.success && data.data) {
-            // Only include upcoming propositions
-            const upcoming = data.data.filter(p => p.status === 'upcoming');
-            allPropositions.push(...upcoming);
-          }
+        if (!yearsData.success || !yearsData.data || yearsData.data.length === 0) {
+          setPredictions([]);
+          setError('Could not load available years');
+          return;
         }
 
-        if (allPropositions.length === 0) {
+        // Fetch propositions from current and future years
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const yearsToCheck = yearsData.data.filter(y => y >= currentYear);
+
+        const fetchPromises = yearsToCheck.map(async (year) => {
+          const response = await fetch(`/api/propositions?year=${year}`);
+          const data: ApiResponse<Proposition[]> = await response.json();
+          return data.success ? data.data : [];
+        });
+
+        const results = await Promise.all(fetchPromises);
+        const allPropositions = results.flat();
+
+        // Filter to only upcoming propositions (election date in the future)
+        const upcoming = allPropositions.filter(p => {
+          if (p.status === 'upcoming') return true;
+          // Double-check by election date in case status wasn't set correctly
+          const electionDay = new Date(p.electionDate + 'T23:59:59');
+          return electionDay > now;
+        });
+
+        if (upcoming.length === 0) {
           setPredictions([]);
           return;
         }
 
-        // Generate predictions for each proposition
-        const predictionsWithData: PredictionItem[] = await Promise.all(
-          allPropositions.map(async (prop) => {
-            try {
-              const predResponse = await fetch(`/api/predictions/${prop.id}`);
-              const predData = await predResponse.json();
+        // Generate predictions for each upcoming proposition (batch in groups of 5)
+        const items: PredictionItem[] = [];
+        const batchSize = 5;
 
-              if (predData.success && predData.data) {
-                return {
-                  id: prop.id,
-                  number: prop.number,
-                  title: prop.title,
-                  category: prop.category,
-                  year: prop.year,
-                  electionDate: prop.electionDate,
-                  status: prop.status,
-                  prediction: predData.data,
-                };
+        for (let i = 0; i < upcoming.length; i += batchSize) {
+          const batch = upcoming.slice(i, i + batchSize);
+          const batchResults = await Promise.all(
+            batch.map(async (prop) => {
+              try {
+                const predResponse = await fetch(`/api/predictions/${prop.id}`);
+                const predData = await predResponse.json();
+
+                if (predData.success && predData.data) {
+                  return {
+                    id: prop.id,
+                    number: prop.number,
+                    title: prop.title,
+                    category: prop.category,
+                    year: prop.year,
+                    electionDate: prop.electionDate,
+                    status: prop.status,
+                    prediction: predData.data as PropositionPrediction,
+                  };
+                }
+              } catch {
+                // Skip propositions where prediction fails
               }
-            } catch {
-              // If prediction fails, generate a basic one
-            }
+              return null;
+            })
+          );
 
-            // Fallback prediction
-            return {
-              id: prop.id,
-              number: prop.number,
-              title: prop.title,
-              category: prop.category,
-              year: prop.year,
-              electionDate: prop.electionDate,
-              status: prop.status,
-              prediction: {
-                propositionId: prop.id,
-                passageProbability: 0.5,
-                confidence: 0.5,
-                factors: [],
-                historicalComparison: [],
-                generatedAt: new Date().toISOString(),
-              },
-            };
-          })
-        );
+          items.push(...batchResults.filter((r): r is PredictionItem => r !== null));
+        }
 
-        setPredictions(predictionsWithData);
+        setPredictions(items);
+        if (items.length > 0 && !selectedPrediction) {
+          setSelectedPrediction(items[0].id);
+        }
       } catch (err) {
         setError('Failed to load predictions');
         console.error(err);
@@ -120,27 +128,36 @@ export default function PredictionsPage() {
       }
     };
 
-    fetchPredictions();
-  }, []);
+    fetchUpcomingPredictions();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedPredictions = [...predictions].sort((a, b) => {
     if (sortBy === 'probability') {
       return b.prediction.passageProbability - a.prediction.passageProbability;
     }
-    return b.prediction.confidence - a.prediction.confidence;
+    if (sortBy === 'dataQuality') {
+      const qualityOrder = { strong: 3, moderate: 2, limited: 1 };
+      return (qualityOrder[b.prediction.dataQuality] || 0) - (qualityOrder[a.prediction.dataQuality] || 0);
+    }
+    // Sort by number ascending
+    return parseInt(a.number) - parseInt(b.number);
   });
 
   const selectedItem = selectedPrediction
     ? predictions.find((p) => p.id === selectedPrediction)
     : null;
 
-  const avgProbability = predictions.length > 0
-    ? predictions.reduce((sum, p) => sum + p.prediction.passageProbability, 0) / predictions.length
+  const withData = predictions.filter(p => p.prediction.dataQuality !== 'limited');
+
+  const avgProbability = withData.length > 0
+    ? withData.reduce((sum, p) => sum + p.prediction.passageProbability, 0) / withData.length
     : 0;
 
-  const likelyToPass = predictions.filter(
+  const likelyToPass = withData.filter(
     (p) => p.prediction.passageProbability >= 0.5
   ).length;
+
+  const insufficientData = predictions.length - withData.length;
 
   if (loading) {
     return (
@@ -164,7 +181,7 @@ export default function PredictionsPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-gray-900">Prediction Dashboard</h1>
             <p className="text-gray-600 font-medium">
-              View passage probabilities for upcoming propositions
+              Passage probability analysis for upcoming California propositions
             </p>
           </div>
         </div>
@@ -185,8 +202,14 @@ export default function PredictionsPage() {
             <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-700 font-bold text-lg">No upcoming propositions found</p>
             <p className="text-sm text-gray-500 mt-2">
-              Check back closer to election dates for 2025 and 2026 propositions.
+              Predictions will appear here when upcoming ballot measures are available.
             </p>
+            <Link href="/propositions">
+              <Button variant="outline" className="mt-4 border-2 border-blue-900 text-blue-900 hover:bg-blue-50 font-semibold">
+                Browse All Propositions
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
@@ -201,7 +224,7 @@ export default function PredictionsPage() {
                   </div>
                   <div>
                     <p className="text-3xl font-display font-bold text-blue-900">{predictions.length}</p>
-                    <p className="text-sm text-gray-600 font-medium">Upcoming Props</p>
+                    <p className="text-sm text-gray-600 font-medium">Upcoming</p>
                   </div>
                 </div>
               </CardContent>
@@ -214,7 +237,7 @@ export default function PredictionsPage() {
                   </div>
                   <div>
                     <p className="text-3xl font-display font-bold text-green-700">{likelyToPass}</p>
-                    <p className="text-sm text-gray-600 font-medium">Likely to Pass</p>
+                    <p className="text-sm text-gray-600 font-medium">Predicted Pass</p>
                   </div>
                 </div>
               </CardContent>
@@ -227,9 +250,9 @@ export default function PredictionsPage() {
                   </div>
                   <div>
                     <p className="text-3xl font-display font-bold text-red-700">
-                      {predictions.length - likelyToPass}
+                      {withData.length - likelyToPass}
                     </p>
-                    <p className="text-sm text-gray-600 font-medium">Likely to Fail</p>
+                    <p className="text-sm text-gray-600 font-medium">Predicted Fail</p>
                   </div>
                 </div>
               </CardContent>
@@ -242,9 +265,11 @@ export default function PredictionsPage() {
                   </div>
                   <div>
                     <p className="text-3xl font-display font-bold text-gray-700">
-                      {formatPercentage(avgProbability)}
+                      {insufficientData > 0 ? `${insufficientData}` : formatPercentage(avgProbability)}
                     </p>
-                    <p className="text-sm text-gray-600 font-medium">Avg. Probability</p>
+                    <p className="text-sm text-gray-600 font-medium">
+                      {insufficientData > 0 ? 'Low Data' : 'Avg. Probability'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -256,21 +281,24 @@ export default function PredictionsPage() {
             <div className="lg:col-span-1 space-y-4">
               <Card className="border-2 border-gray-200">
                 <CardHeader className="pb-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-display font-bold text-gray-900">All Predictions</CardTitle>
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'probability' | 'confidence')}>
-                      <SelectTrigger className="w-36 border-2 border-gray-200">
-                        <Filter className="h-3 w-3 mr-1" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="probability">Probability</SelectItem>
-                        <SelectItem value="confidence">Confidence</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-display font-bold text-gray-900">Predictions</CardTitle>
+                      <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'probability' | 'dataQuality' | 'number')}>
+                        <SelectTrigger className="w-36 border-2 border-gray-200">
+                          <Filter className="h-3 w-3 mr-1" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="number">By Number</SelectItem>
+                          <SelectItem value="probability">Probability</SelectItem>
+                          <SelectItem value="dataQuality">Data Quality</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-4 space-y-2">
+                <CardContent className="pt-4 space-y-2 max-h-[600px] overflow-y-auto">
                   {sortedPredictions.map((item) => (
                     <button
                       key={item.id}
@@ -290,27 +318,40 @@ export default function PredictionsPage() {
                             {item.year}
                           </Badge>
                         </div>
-                        <span
-                          className={`text-xl font-bold ${
-                            item.prediction.passageProbability >= 0.5
-                              ? 'text-blue-900'
-                              : 'text-red-700'
-                          }`}
-                        >
-                          {formatPercentage(item.prediction.passageProbability)}
-                        </span>
+                        {item.prediction.dataQuality !== 'limited' ? (
+                          <span
+                            className={`text-xl font-bold ${
+                              item.prediction.passageProbability >= 0.5
+                                ? 'text-blue-900'
+                                : 'text-red-700'
+                            }`}
+                          >
+                            {formatPercentage(item.prediction.passageProbability)}
+                          </span>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-400">No data</span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-600 truncate font-medium">{item.title}</p>
-                      <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${
-                            item.prediction.passageProbability >= 0.5
-                              ? 'bg-blue-900'
-                              : 'bg-red-700'
-                          }`}
-                          style={{ width: `${item.prediction.passageProbability * 100}%` }}
-                        />
-                      </div>
+                      {item.prediction.dataQuality !== 'limited' && (
+                        <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              item.prediction.passageProbability >= 0.5
+                                ? 'bg-blue-900'
+                                : 'bg-red-700'
+                            }`}
+                            style={{ width: `${item.prediction.passageProbability * 100}%` }}
+                          />
+                        </div>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500 font-medium">
+                        Election: {new Date(item.electionDate + 'T00:00:00').toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </p>
                     </button>
                   ))}
                 </CardContent>
@@ -327,10 +368,10 @@ export default function PredictionsPage() {
                 </CardHeader>
                 <CardContent className="pt-4">
                   <p className="text-sm text-gray-600">
-                    Predictions are generated using a weighted model that considers
-                    campaign finance, demographics, ballot wording, timing, and
-                    opposition strength. Confidence scores indicate the reliability
-                    of each prediction based on available data.
+                    Predictions are generated using real data only: campaign finance
+                    from Cal-Access and historical election results from Ballotpedia.
+                    When insufficient data is available, no prediction is shown rather
+                    than displaying a fabricated number.
                   </p>
                 </CardContent>
               </Card>
@@ -346,7 +387,7 @@ export default function PredictionsPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <Badge className="bg-blue-900 text-white border-0">
-                              {selectedItem.category.replace('_', ' ')}
+                              {selectedItem.category.replace(/_/g, ' ')}
                             </Badge>
                             <Badge className="bg-gray-100 text-gray-700 border border-gray-300">
                               {selectedItem.year}
@@ -356,7 +397,7 @@ export default function PredictionsPage() {
                             Proposition {selectedItem.number}: {selectedItem.title}
                           </CardTitle>
                           <p className="text-sm text-gray-600 mt-2 font-medium">
-                            Election: {new Date(selectedItem.electionDate).toLocaleDateString('en-US', {
+                            Election: {new Date(selectedItem.electionDate + 'T00:00:00').toLocaleDateString('en-US', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric'
@@ -364,7 +405,8 @@ export default function PredictionsPage() {
                           </p>
                         </div>
                         <Link href={`/propositions/${selectedItem.id}`}>
-                          <Button variant="outline" size="sm" className="border-2 border-blue-900 text-blue-900 hover:bg-blue-50 font-semibold">
+                          <Button variant="outline" size="sm" className="border-2 border-blue-900 text-blue-900 hover:bg-blue-50
+						  w-40 font-semibold">
                             Full Details
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Button>

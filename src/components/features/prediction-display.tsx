@@ -3,7 +3,7 @@
 import { PropositionPrediction, PredictionFactor } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
 import { formatPercentage } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Info, AlertTriangle, Database } from 'lucide-react';
 
 interface PredictionDisplayProps {
   prediction: PropositionPrediction;
@@ -11,75 +11,106 @@ interface PredictionDisplayProps {
   showHistorical?: boolean;
 }
 
+const DATA_QUALITY_LABELS = {
+  strong: { label: 'Strong Data', color: 'bg-green-100 text-green-800 border-green-300' },
+  moderate: { label: 'Moderate Data', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+  limited: { label: 'Insufficient Data', color: 'bg-red-100 text-red-800 border-red-300' },
+};
+
 export function PredictionDisplay({
   prediction,
   showFactors = true,
   showHistorical = true,
 }: PredictionDisplayProps) {
-  const probabilityPercent = prediction.passageProbability * 100;
+  const qualityInfo = DATA_QUALITY_LABELS[prediction.dataQuality];
+  const hasRealPrediction = prediction.dataQuality !== 'limited';
 
   return (
     <div className="space-y-6">
       <Card className="border-2 border-gray-200">
         <CardHeader className="border-b border-gray-200">
-          <CardTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-display font-bold text-gray-900">Passage Prediction</span>
             </div>
-            <span className="text-xl font-display font-bold text-gray-900">Passage Prediction</span>
+            <Badge className={`${qualityInfo.color} border text-xs font-semibold`}>
+              {qualityInfo.label}
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="text-center mb-6">
-            <div
-              className={`text-6xl font-display font-bold mb-2 ${prediction.passageProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
-            >
-              {formatPercentage(prediction.passageProbability)}
-            </div>
-            <p className="text-gray-600 font-medium">Probability of Passage</p>
-            <div className="mt-6 max-w-md mx-auto">
-              <div className="h-4 bg-gray-200 rounded overflow-hidden">
+          {hasRealPrediction ? (
+            <>
+              <div className="text-center mb-6">
                 <div
-                  className={`h-full ${probabilityPercent >= 50 ? 'bg-blue-900' : 'bg-red-700'}`}
-                  style={{ width: `${probabilityPercent}%` }}
-                />
+                  className={`text-6xl font-display font-bold mb-2 ${prediction.passageProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}
+                >
+                  {formatPercentage(prediction.passageProbability)}
+                </div>
+                <p className="text-gray-600 font-medium">Probability of Passage</p>
+                <div className="mt-6 max-w-md mx-auto">
+                  <div className="h-4 bg-gray-200 rounded overflow-hidden">
+                    <div
+                      className={`h-full ${prediction.passageProbability >= 0.5 ? 'bg-blue-900' : 'bg-red-700'}`}
+                      style={{ width: `${prediction.passageProbability * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
+                    <span>Fail</span>
+                    <span>Pass</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
-                <span>Fail</span>
-                <span>Pass</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Badge className="bg-gray-100 text-gray-700 border border-gray-300 font-semibold">
-                Confidence: {formatPercentage(prediction.confidence)}
-              </Badge>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-4 text-center border-t-2 border-gray-200 pt-6">
-            <div className="p-4 bg-blue-50 rounded border border-blue-200">
-              <p className="text-2xl font-bold text-blue-900">
-                {formatPercentage(prediction.passageProbability)}
+              <div className="grid grid-cols-2 gap-4 text-center border-t-2 border-gray-200 pt-6">
+                <div className="p-4 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-2xl font-bold text-blue-900">
+                    {formatPercentage(prediction.passageProbability)}
+                  </p>
+                  <p className="text-sm text-gray-600 font-medium">Pass</p>
+                </div>
+                <div className="p-4 bg-red-50 rounded border border-red-200">
+                  <p className="text-2xl font-bold text-red-700">
+                    {formatPercentage(1 - prediction.passageProbability)}
+                  </p>
+                  <p className="text-sm text-gray-600 font-medium">Fail</p>
+                </div>
+              </div>
+
+              {/* Data sources */}
+              {prediction.dataSources.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Database className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-bold text-gray-600">Data sources</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {prediction.dataSources.join(' · ')}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <p className="text-lg font-bold text-gray-800 mb-2">Insufficient Data</p>
+              <p className="text-sm text-gray-600 max-w-md mx-auto">
+                Not enough real data to generate a meaningful prediction.
+                No campaign finance records or historical results for similar propositions were found.
               </p>
-              <p className="text-sm text-gray-600 font-medium">Likely Pass</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded border border-gray-200">
-              <p className="text-2xl font-bold text-gray-500">
-                {formatPercentage(0.5 - Math.abs(prediction.passageProbability - 0.5))}
+              <p className="text-xs text-gray-400 mt-4">
+                Predictions require at least one of: campaign finance data from Cal-Access
+                or historical election results from Ballotpedia for similar measures.
               </p>
-              <p className="text-sm text-gray-600 font-medium">Uncertain</p>
             </div>
-            <div className="p-4 bg-red-50 rounded border border-red-200">
-              <p className="text-2xl font-bold text-red-700">
-                {formatPercentage(1 - prediction.passageProbability)}
-              </p>
-              <p className="text-sm text-gray-600 font-medium">Likely Fail</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {showFactors && prediction.factors.length > 0 && (
+      {showFactors && hasRealPrediction && prediction.factors.length > 0 && (
         <Card className="border-2 border-gray-200">
           <CardHeader className="border-b border-gray-200">
             <CardTitle className="flex items-center gap-3">
@@ -142,11 +173,7 @@ function FactorRow({ factor }: { factor: PredictionFactor }) {
 
   const factorLabels: Record<string, string> = {
     campaignFinance: 'Campaign Finance',
-    historicalSimilarity: 'Historical Similarity',
-    demographics: 'Demographics',
-    ballotWording: 'Ballot Wording',
-    timing: 'Election Timing',
-    opposition: 'Opposition Strength',
+    historicalPassRate: 'Historical Pass Rate',
   };
 
   const impactStyles = {
@@ -167,8 +194,8 @@ function FactorRow({ factor }: { factor: PredictionFactor }) {
           <span className="font-bold text-gray-900">
             {factorLabels[factor.name] || factor.name}
           </span>
-          <span className="text-sm text-gray-600 font-medium">
-            Weight: {(factor.weight * 100).toFixed(0)}%
+          <span className="text-xs text-gray-500 font-medium">
+            {factor.source}
           </span>
         </div>
         <div className="h-2 bg-gray-200 rounded overflow-hidden mb-2">

@@ -46,29 +46,6 @@ const features = [
   },
 ];
 
-const upcomingPropositions = [
-  {
-    number: '1',
-    title: 'Housing Bond Act',
-    category: 'Housing',
-    prediction: 0.62,
-    status: 'Active',
-  },
-  {
-    number: '2',
-    title: 'Education Funding Reform',
-    category: 'Education',
-    prediction: 0.58,
-    status: 'Active',
-  },
-  {
-    number: '3',
-    title: 'Environmental Protection',
-    category: 'Environment',
-    prediction: 0.71,
-    status: 'Active',
-  },
-];
 
 const dataSources = [
   {
@@ -94,10 +71,10 @@ const dataSources = [
 ];
 
 const stats = [
-  { label: 'Historical Props Analyzed', value: '200+', icon: BarChart3 },
-  { label: 'Prediction Accuracy', value: '85%', icon: TrendingUp },
-  { label: 'Active Propositions', value: '12', icon: Map },
-  { label: 'Districts Tracked', value: '58', icon: Users },
+  { label: 'Data Sources', value: '4', icon: BarChart3 },
+  { label: 'Real-Time Finance', value: 'Yes', icon: TrendingUp },
+  { label: 'Counties', value: '58', icon: Map },
+  { label: 'Years of History', value: '10+', icon: Users },
 ];
 
 export default function HomePage() {
@@ -118,8 +95,8 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-xl text-gray-700 mb-10 leading-relaxed max-w-3xl mx-auto">
-              Data-driven predictions for statewide ballot measures using machine learning,
-              historical voting patterns, campaign finance tracking, and demographic analysis.
+              Data-driven analysis for statewide ballot measures using real campaign finance data
+              from Cal-Access and historical voting results from Ballotpedia and the CA Secretary of State.
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto">
@@ -191,70 +168,32 @@ export default function HomePage() {
 
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <Badge className="mb-3 bg-red-700 text-white border-0">
-                Live Tracking
-              </Badge>
-              <h2 className="font-display text-display-md font-bold text-gray-900">
-                2026 Ballot Measures
-              </h2>
-              <p className="text-gray-600 mt-2">
-                Real-time predictions and analysis for upcoming propositions
-              </p>
-            </div>
-            <Link href="/propositions">
-              <Button variant="outline" className="border-2 border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white">
-                View All Propositions
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+          <div className="text-center mb-12">
+            <Badge className="mb-3 bg-red-700 text-white border-0">
+              Live Tracking
+            </Badge>
+            <h2 className="font-display text-display-md font-bold text-gray-900">
+              2026 Ballot Measures
+            </h2>
+            <p className="text-gray-600 mt-2 max-w-2xl mx-auto">
+              Predictions for upcoming California propositions based on real campaign finance
+              data from Cal-Access and historical election results from Ballotpedia.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {upcomingPropositions.map((prop) => (
-              <Card key={prop.number} className="hover:shadow-xl transition-shadow bg-white border-2 border-gray-200">
-                <div className="h-2 bg-blue-900" />
-
-                <CardContent className="pt-8">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <Badge className="mb-3 bg-gray-100 text-gray-700 border border-gray-300 text-xs font-semibold">
-                        {prop.category}
-                      </Badge>
-                      <h3 className="font-display font-bold text-lg text-gray-900">
-                        Proposition {prop.number}
-                      </h3>
-                      <p className="text-gray-600 mt-1 text-sm">{prop.title}</p>
-                    </div>
-                    <span className="text-5xl font-display font-bold text-gray-200">
-                      {prop.number}
-                    </span>
-                  </div>
-
-                  <div className="mt-6 p-4 bg-gray-50 rounded border border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700">
-                        Passage Probability
-                      </span>
-                      <span className={`text-2xl font-display font-bold ${prop.prediction >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
-                        {(prop.prediction * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded overflow-hidden">
-                      <div
-                        className={`h-full ${prop.prediction >= 0.5 ? 'bg-blue-900' : 'bg-red-700'}`}
-                        style={{ width: `${prop.prediction * 100}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
-                      <span>Fail</span>
-                      <span>Pass</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="text-center">
+            <Link href="/predictions">
+              <Button size="lg" className="bg-blue-900 text-white hover:bg-blue-800 px-8 py-6 text-lg font-semibold">
+                View Predictions Dashboard
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/propositions" className="ml-4">
+              <Button size="lg" variant="outline" className="border-2 border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white px-8 py-6 text-lg font-semibold">
+                Browse All Propositions
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

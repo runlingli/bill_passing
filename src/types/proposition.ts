@@ -67,10 +67,13 @@ export interface Donor {
   type: 'individual' | 'organization' | 'pac';
 }
 
+export type DataQuality = 'strong' | 'moderate' | 'limited';
+
 export interface PropositionPrediction {
   propositionId: string;
   passageProbability: number;
-  confidence: number;
+  dataQuality: DataQuality;
+  dataSources: string[];
   factors: PredictionFactor[];
   historicalComparison: HistoricalComparison[];
   generatedAt: string;
@@ -78,10 +81,11 @@ export interface PropositionPrediction {
 
 export interface PredictionFactor {
   name: string;
-  weight: number;
   value: number;
   impact: 'positive' | 'negative' | 'neutral';
   description: string;
+  source: string;
+  hasRealData: boolean;
 }
 
 export interface HistoricalComparison {

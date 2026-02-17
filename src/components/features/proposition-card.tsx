@@ -37,7 +37,7 @@ export function PropositionCard({
                   {proposition.status}
                 </Badge>
                 <Badge className="bg-gray-100 text-gray-700 border border-gray-300 text-xs font-semibold">
-                  {proposition.category.replace('_', ' ')}
+                  {proposition.category.replace(/_/g, ' ')}
                 </Badge>
               </div>
               <h3 className="font-display font-bold text-lg text-gray-900">
@@ -81,7 +81,7 @@ export function PropositionCard({
               </div>
               <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
                 <span>Fail</span>
-                <span className="text-gray-400">Confidence: {formatPercentage(prediction.confidence)}</span>
+                <span className="text-gray-400 capitalize">{prediction.dataQuality} data</span>
                 <span>Pass</span>
               </div>
             </div>

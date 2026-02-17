@@ -54,7 +54,7 @@ export default function PropositionsPage() {
 
         if (selectedYear === 'all') {
           // Fetch from all years
-          const yearsToFetch = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
+          const yearsToFetch = ['2026', '2025', '2024', '2022', '2020', '2018', '2016'];
           const fetchPromises = yearsToFetch.map(async (year) => {
             const response = await fetch(`/api/propositions?year=${year}`);
             const data: ApiResponse<Proposition[]> = await response.json();

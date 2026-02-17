@@ -142,7 +142,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
               {proposition.status}
             </Badge>
             <Badge className="bg-gray-100 text-gray-700 border border-gray-300 text-sm font-semibold">
-              {proposition.category.replace('_', ' ')}
+              {proposition.category.replace(/_/g, ' ')}
             </Badge>
             <Badge className="bg-gray-100 text-gray-700 border border-gray-300 text-sm font-semibold">
               {proposition.year}

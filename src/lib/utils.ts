@@ -60,9 +60,19 @@ export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOpt
     month: 'long',
     day: 'numeric',
   };
-  return new Intl.DateTimeFormat('en-US', options || defaultOptions).format(
-    typeof date === 'string' ? new Date(date) : date
-  );
+  let dateObj: Date;
+  if (typeof date === 'string') {
+    // Parse date-only strings (YYYY-MM-DD) as local time to avoid timezone shift
+    const parts = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (parts) {
+      dateObj = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+    } else {
+      dateObj = new Date(date);
+    }
+  } else {
+    dateObj = date;
+  }
+  return new Intl.DateTimeFormat('en-US', options || defaultOptions).format(dateObj);
 }
 
 /**

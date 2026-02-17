@@ -16,24 +16,12 @@ import {
   SelectItem,
   Button,
 } from '@/components/ui';
-import { Zap, ArrowRight, TrendingUp, Clock, Trash2, Loader2, Calendar, FileText, Settings2, Info } from 'lucide-react';
+import { Zap, ArrowRight, TrendingUp, Clock, Trash2, Loader2, Calendar, FileText, Info } from 'lucide-react';
 import { Scenario, Proposition, PropositionWithDetails, SCENARIO_PRESETS, ApiResponse } from '@/types';
-import type { FactorWeights } from '@/components/features/scenario-builder';
-
-const availableYears = ['2026', '2025', '2024', '2022', '2021', '2020', '2018', '2016'];
-
-// Default factor weights
-const DEFAULT_WEIGHTS: FactorWeights = {
-  campaignFinance: 0.30,
-  ballotWording: 0.20,
-  demographics: 0.15,
-  timing: 0.15,
-  historical: 0.10,
-  opposition: 0.10,
-};
 
 export default function ScenariosPage() {
-  const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('');
   const [propositions, setPropositions] = useState<Proposition[]>([]);
   const [selectedProposition, setSelectedProposition] = useState<string>('');
   const [currentProposition, setCurrentProposition] = useState<PropositionWithDetails | null>(null);
@@ -44,28 +32,35 @@ export default function ScenariosPage() {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Custom weights state
-  const [weights, setWeights] = useState<FactorWeights>(DEFAULT_WEIGHTS);
-  const [showWeightEditor, setShowWeightEditor] = useState(false);
-
-  const updateWeight = (factor: keyof FactorWeights, value: number) => {
-    setWeights(prev => ({ ...prev, [factor]: value }));
-  };
-
-  const resetWeights = () => {
-    setWeights(DEFAULT_WEIGHTS);
-  };
-
-  const totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0);
-
   const handlePresetClick = (presetId: string) => {
     setSelectedPreset(presetId);
     // Reset after a short delay so it can be clicked again
     setTimeout(() => setSelectedPreset(null), 100);
   };
 
+  // Fetch available years on mount
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const response = await fetch('/api/propositions/years');
+        const data: ApiResponse<number[]> = await response.json();
+        if (data.success && data.data.length > 0) {
+          const years = data.data.map(String);
+          setAvailableYears(years);
+          setSelectedYear(years[0]);
+        }
+      } catch {
+        setError('Failed to fetch available years');
+        setIsLoading(false);
+      }
+    };
+    fetchYears();
+  }, []);
+
   // Fetch propositions when year changes
   useEffect(() => {
+    if (!selectedYear) return;
+
     const fetchPropositions = async () => {
       setIsLoading(true);
       setError(null);
@@ -194,8 +189,6 @@ export default function ScenariosPage() {
                       {availableYears.map((year) => (
                         <SelectItem key={year} value={year}>
                           {year}
-                          {year === '2026' && ' (Upcoming)'}
-                          {year === '2025' && ' (Special)'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -267,7 +260,6 @@ export default function ScenariosPage() {
               proposition={currentProposition}
               onScenarioRun={handleScenarioRun}
               presetId={selectedPreset}
-              customWeights={weights}
             />
           ) : (
             <Card className="border-2 border-gray-200">
@@ -373,88 +365,20 @@ export default function ScenariosPage() {
           </Card>
 
           <Card className="border-2 border-gray-200">
-            <CardHeader className="pb-2 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
-                    <Settings2 className="h-4 w-4 text-white" />
-                  </div>
-                  Model Weights
-                </CardTitle>
-                <button
-                  onClick={() => setShowWeightEditor(!showWeightEditor)}
-                  className="text-xs text-blue-900 hover:underline font-semibold"
-                >
-                  {showWeightEditor ? 'Hide' : 'Edit'}
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <code className="text-xs text-blue-900 font-bold">P = Σ(Factor × Weight)</code>
-              </div>
-
-              {/* Weight Total Indicator */}
-              <div className={`text-xs p-3 rounded-lg font-bold ${Math.abs(totalWeight - 1) < 0.01 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                Total: {(totalWeight * 100).toFixed(0)}%
-                {Math.abs(totalWeight - 1) >= 0.01 && ' (should be 100%)'}
-              </div>
-
-              {/* Editable Weights */}
-              <div className="space-y-3">
-                {[
-                  { key: 'campaignFinance', label: 'Campaign Finance', hint: 'Money influence' },
-                  { key: 'ballotWording', label: 'Ballot Wording', hint: 'Language impact' },
-                  { key: 'demographics', label: 'Demographics', hint: 'Voter composition' },
-                  { key: 'timing', label: 'Timing/Turnout', hint: 'Election context' },
-                  { key: 'historical', label: 'Historical', hint: 'Past patterns' },
-                  { key: 'opposition', label: 'Opposition', hint: 'Organized resistance' },
-                ].map(({ key, label, hint }) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-700 font-medium">{label}</span>
-                      <span className="font-mono font-bold text-gray-900">
-                        {(weights[key as keyof FactorWeights] * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    {showWeightEditor && (
-                      <>
-                        <input
-                          type="range"
-                          min="0"
-                          max="50"
-                          value={weights[key as keyof FactorWeights] * 100}
-                          onChange={(e) => updateWeight(key as keyof FactorWeights, parseInt(e.target.value) / 100)}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
-                        />
-                        <p className="text-[10px] text-gray-500">{hint}</p>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {showWeightEditor && (
-                <button
-                  onClick={resetWeights}
-                  className="w-full text-xs text-gray-600 hover:text-gray-900 py-2 border-2 border-dashed border-gray-300 rounded-lg font-semibold hover:border-gray-400 transition-colors"
-                >
-                  Reset to Default
-                </button>
-              )}
-
-              {/* Formula Reference */}
-              <div className="border-t-2 border-gray-200 pt-4 space-y-2">
-                <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                  <Info className="h-3 w-3" />
-                  Factor Calculations
-                </p>
-                <div className="text-[10px] text-gray-600 space-y-1 font-mono bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <p>Finance: (Support% - 50%) × 0.8</p>
-                  <p>Turnout: (Rate - 1.0) × 0.15</p>
-                  <p>Framing: Sentiment × 0.2 + Complexity</p>
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-900 rounded flex items-center justify-center">
+                  <Info className="h-4 w-4 text-white" />
                 </div>
-              </div>
+                How It Works
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-sm text-gray-600">
+                Scenarios adjust campaign finance levels and re-run the prediction
+                model using real Cal-Access spending data and Ballotpedia historical results.
+                Only factors backed by real data affect the prediction.
+              </p>
             </CardContent>
           </Card>
         </div>

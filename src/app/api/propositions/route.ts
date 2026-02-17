@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { propositionService } from '@/services';
 import { PropositionQueryParams } from '@/types';
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 300; // Revalidate every 5 minutes
 
 export async function GET(request: NextRequest) {

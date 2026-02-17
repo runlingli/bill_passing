@@ -1,121 +1,150 @@
 /**
  * Prediction Engine Service
- * Calculates probability of proposition passage based on multiple factors
+ *
+ * Calculates probability of proposition passage using ONLY real data.
+ * Does not fabricate predictions when data is unavailable.
+ *
+ * Real data sources used:
+ * - Historical pass rates: Ballotpedia election results for same-category propositions
+ * - Campaign finance: Cal-Access support/opposition spending ratios
+ *
+ * NOT used (because they produce no real signal):
+ * - Arbitrary timing coefficients
+ * - Word-list sentiment scores
+ * - Opposition count formulas
+ * - Default 0.5 fallbacks when data is missing
  */
 
-import { apiClient } from '@/lib/api-client';
 import {
   PropositionPrediction,
   PredictionFactor,
   HistoricalComparison,
   PropositionWithDetails,
-  ApiResponse,
+  DataQuality,
+  Proposition,
   Scenario,
   ScenarioResults,
 } from '@/types';
-import { weightedAverage, clamp } from '@/lib/utils';
+import { clamp } from '@/lib/utils';
+import { caSosClient } from '@/lib/external-apis';
 
 interface PredictionInput {
   proposition: PropositionWithDetails;
   includeHistorical?: boolean;
-  customWeights?: Partial<FactorWeights>;
 }
-
-interface FactorWeights {
-  campaignFinance: number;
-  historicalSimilarity: number;
-  demographics: number;
-  ballotWording: number;
-  timing: number;
-  opposition: number;
-}
-
-const DEFAULT_WEIGHTS: FactorWeights = {
-  campaignFinance: 0.30,    // Money is very influential
-  historicalSimilarity: 0.10, // Less weight - we don't have good data for this
-  demographics: 0.15,        // Demographics matter but hard to change
-  ballotWording: 0.20,       // Framing has significant impact
-  timing: 0.15,              // Turnout/timing matters
-  opposition: 0.10,          // Opposition organization
-};
 
 class PredictionService {
-  private basePath = '/predictions';
-  private weights: FactorWeights = DEFAULT_WEIGHTS;
-
-  async getPrediction(propositionId: string): Promise<ApiResponse<PropositionPrediction>> {
-    return apiClient.get<PropositionPrediction>(`${this.basePath}/${propositionId}`);
-  }
-
   async generatePrediction(input: PredictionInput): Promise<PropositionPrediction> {
-    const factors = this.calculateFactors(input.proposition);
-    const weights = { ...this.weights, ...input.customWeights };
+    const factors: PredictionFactor[] = [];
+    const dataSources: string[] = [];
 
-    const factorValues = factors.map((f) => f.value);
-    const factorWeights = factors.map((f) => weights[f.name as keyof FactorWeights] || 0.1);
-
-    const baseProbability = weightedAverage(factorValues, factorWeights);
-    const confidence = this.calculateConfidence(factors, input.proposition);
-
+    // 1. Find historically similar propositions (real Ballotpedia vote data)
     const historicalComparison = input.includeHistorical
       ? await this.findSimilarPropositions(input.proposition)
       : [];
 
+    const historicalFactor = this.calculateHistoricalFactor(historicalComparison);
+    if (historicalFactor) {
+      factors.push(historicalFactor);
+      dataSources.push('Ballotpedia historical results');
+    }
+
+    // 2. Campaign finance (real Cal-Access data — only when actual spending exists)
+    const financeFactor = this.calculateFinanceFactor(input.proposition);
+    if (financeFactor) {
+      factors.push(financeFactor);
+      dataSources.push('Cal-Access campaign finance');
+    }
+
+    // Compute probability from real factors only
+    let passageProbability: number;
+    let dataQuality: DataQuality;
+
+    if (factors.length === 0) {
+      // No real data — don't fake a number
+      passageProbability = 0;
+      dataQuality = 'limited';
+    } else if (factors.length === 1) {
+      passageProbability = factors[0].value;
+      dataQuality = 'moderate';
+    } else {
+      // Both finance and historical data available
+      // Finance is generally a stronger short-term signal for specific measures.
+      // Historical base rate provides the category-level prior.
+      const finance = factors.find(f => f.name === 'campaignFinance');
+      const historical = factors.find(f => f.name === 'historicalPassRate');
+      if (finance && historical) {
+        passageProbability = finance.value * 0.6 + historical.value * 0.4;
+      } else {
+        passageProbability = factors.reduce((sum, f) => sum + f.value, 0) / factors.length;
+      }
+      dataQuality = 'strong';
+    }
+
     return {
       propositionId: input.proposition.id,
-      passageProbability: clamp(baseProbability, 0, 1),
-      confidence,
+      passageProbability: factors.length > 0 ? clamp(passageProbability, 0, 1) : 0,
+      dataQuality,
+      dataSources,
       factors,
       historicalComparison,
       generatedAt: new Date().toISOString(),
     };
   }
 
-  calculateFactors(proposition: PropositionWithDetails): PredictionFactor[] {
-    const factors: PredictionFactor[] = [];
+  /**
+   * Calculate base rate from real historical election results.
+   *
+   * Uses the binary pass/fail rate of same-category propositions with
+   * Bayesian shrinkage toward 50% to avoid extreme values from small samples.
+   *
+   * Beta(1,1) uniform prior → posterior mean = (1 + passes) / (2 + total).
+   * This means:
+   *   n=1, 1 pass  → 67% (not 100%)
+   *   n=3, 2 pass  → 60%
+   *   n=5, 4 pass  → 71%
+   *   n=10, 7 pass → 67%
+   *
+   * Requires at least 3 comparisons — fewer is not enough data.
+   */
+  private calculateHistoricalFactor(
+    comparisons: HistoricalComparison[]
+  ): PredictionFactor | null {
+    if (comparisons.length < 3) return null;
 
-    factors.push(this.calculateFinanceFactor(proposition));
-    factors.push(this.calculateDemographicFactor(proposition));
-    factors.push(this.calculateBallotWordingFactor(proposition));
-    factors.push(this.calculateTimingFactor(proposition));
-    factors.push(this.calculateOppositionFactor(proposition));
+    const passedCount = comparisons.filter(c => c.result === 'passed').length;
+    // Bayesian posterior mean with uniform Beta(1,1) prior
+    const passRate = (1 + passedCount) / (2 + comparisons.length);
 
-    return factors;
+    const impact = passRate > 0.55 ? 'positive' : passRate < 0.45 ? 'negative' : 'neutral';
+
+    return {
+      name: 'historicalPassRate',
+      value: clamp(passRate, 0.1, 0.9),
+      impact,
+      description: `${passedCount} of ${comparisons.length} similar past propositions in this category passed`,
+      source: 'Ballotpedia election results',
+      hasRealData: true,
+    };
   }
 
-  private calculateFinanceFactor(proposition: PropositionWithDetails): PredictionFactor {
+  /**
+   * Calculate prediction factor from real campaign finance data.
+   * Returns null when no spending data exists in Cal-Access.
+   */
+  private calculateFinanceFactor(proposition: PropositionWithDetails): PredictionFactor | null {
     const finance = proposition.finance;
-    if (!finance) {
-      return {
-        name: 'campaignFinance',
-        weight: this.weights.campaignFinance,
-        value: 0.5,
-        impact: 'neutral',
-        description: 'Campaign finance data unavailable',
-      };
-    }
+    if (!finance) return null;
 
     const total = finance.totalSupport + finance.totalOpposition;
-    if (total === 0) {
-      return {
-        name: 'campaignFinance',
-        weight: this.weights.campaignFinance,
-        value: 0.5,
-        impact: 'neutral',
-        description: 'No campaign spending recorded',
-      };
-    }
+    if (total === 0) return null;
 
+    // The support ratio directly reflects the financial balance of the campaign.
+    // If 70% of money supports it, the finance signal is 0.70.
+    // Clamped to avoid treating 99% of money on one side as 99% probability.
     const supportRatio = finance.totalSupport / total;
-    const spendingAdvantage = supportRatio - 0.5; // -0.5 to +0.5
-
-    // More aggressive scaling - money has big impact
-    // A 2:1 spending advantage (67% vs 33%) = +0.17 advantage = ~0.67 probability
-    // A 4:1 spending advantage (80% vs 20%) = +0.30 advantage = ~0.80 probability
-    let value = 0.5 + spendingAdvantage * 0.8;
-    value = clamp(value, 0.2, 0.8);
-
-    const impact = spendingAdvantage > 0.08 ? 'positive' : spendingAdvantage < -0.08 ? 'negative' : 'neutral';
+    const value = clamp(supportRatio, 0.15, 0.85);
+    const impact = supportRatio > 0.55 ? 'positive' : supportRatio < 0.45 ? 'negative' : 'neutral';
 
     const formatMoney = (n: number) => {
       if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -125,231 +154,113 @@ class PredictionService {
 
     return {
       name: 'campaignFinance',
-      weight: this.weights.campaignFinance,
       value,
       impact,
-      description: `Support ${formatMoney(finance.totalSupport)} vs Opposition ${formatMoney(finance.totalOpposition)} (${(supportRatio * 100).toFixed(0)}% support share)`,
+      description: `${formatMoney(finance.totalSupport)} supporting vs ${formatMoney(finance.totalOpposition)} opposing (${(supportRatio * 100).toFixed(0)}% support share)`,
+      source: 'Cal-Access',
+      hasRealData: true,
     };
   }
 
-  private calculateDemographicFactor(proposition: PropositionWithDetails): PredictionFactor {
-    const demographics = proposition.demographics;
-    if (!demographics) {
-      return {
-        name: 'demographics',
-        weight: this.weights.demographics,
-        value: 0.5,
-        impact: 'neutral',
-        description: 'Demographic analysis unavailable',
-      };
-    }
-
-    const statewide = demographics.statewide;
-    let totalProjectedYes = 0;
-    let totalProjectedNo = 0;
-
-    Object.values(statewide.urbanRural).forEach((pattern) => {
-      totalProjectedYes += pattern.projectedYes * pattern.estimatedTurnout;
-      totalProjectedNo += pattern.projectedNo * pattern.estimatedTurnout;
-    });
-
-    const total = totalProjectedYes + totalProjectedNo;
-    const value = total > 0 ? totalProjectedYes / total : 0.5;
-
-    const impact = value > 0.55 ? 'positive' : value < 0.45 ? 'negative' : 'neutral';
-
-    return {
-      name: 'demographics',
-      weight: this.weights.demographics,
-      value,
-      impact,
-      description: `Demographic projections show ${(value * 100).toFixed(1)}% support`,
-    };
-  }
-
-  private calculateBallotWordingFactor(proposition: PropositionWithDetails): PredictionFactor {
-    const analysis = proposition.ballotAnalysis;
-    if (!analysis) {
-      return {
-        name: 'ballotWording',
-        weight: this.weights.ballotWording,
-        value: 0.5,
-        impact: 'neutral',
-        description: 'Ballot wording analysis unavailable',
-      };
-    }
-
-    let value = 0.5;
-
-    // Sentiment has significant impact (-1 to +1 scale)
-    // Positive framing can swing votes by up to 20%
-    value += analysis.sentimentScore * 0.20;
-
-    // Readability affects understanding (0-100 scale)
-    // Higher readability = more people understand = generally helps passage
-    value += (analysis.readabilityScore / 100 - 0.5) * 0.15;
-
-    // Complexity affects voter decision
-    if (analysis.complexity === 'simple') {
-      value += 0.08; // Simple language helps
-    } else if (analysis.complexity === 'complex') {
-      value -= 0.08; // Complex language hurts (voters vote no when confused)
-    }
-
-    value = clamp(value, 0.25, 0.75);
-
-    const impact =
-      analysis.sentimentScore > 0.15
-        ? 'positive'
-        : analysis.sentimentScore < -0.15
-          ? 'negative'
-          : 'neutral';
-
-    const sentimentDesc = analysis.sentimentScore > 0.1 ? 'positive' :
-                          analysis.sentimentScore < -0.1 ? 'negative' : 'neutral';
-
-    return {
-      name: 'ballotWording',
-      weight: this.weights.ballotWording,
-      value,
-      impact,
-      description: `${analysis.complexity} language with ${sentimentDesc} framing (readability: ${analysis.readabilityScore.toFixed(0)})`,
-    };
-  }
-
-  private calculateTimingFactor(proposition: PropositionWithDetails): PredictionFactor {
-    const electionDate = new Date(proposition.electionDate);
-    const month = electionDate.getMonth();
-    const isPresidentialYear = electionDate.getFullYear() % 4 === 0;
-    const isNovember = month === 10;
-
-    // Check for turnout multiplier from scenario
-    const turnoutMultiplier = (proposition as PropositionWithDetails & { turnoutMultiplier?: number }).turnoutMultiplier || 1.0;
-
-    let value = 0.5;
-
-    // Base timing effects
-    if (isNovember && isPresidentialYear) {
-      value += 0.1;
-    } else if (isNovember) {
-      value += 0.05;
-    } else if (month === 5) {
-      value -= 0.05;
-    }
-
-    // High turnout generally helps progressive measures, low turnout helps conservative measures
-    // This is a simplified model - in reality it depends on the proposition type
-    if (turnoutMultiplier > 1.0) {
-      // Higher turnout - slight boost for most measures
-      value += (turnoutMultiplier - 1.0) * 0.15;
-    } else if (turnoutMultiplier < 1.0) {
-      // Lower turnout - slight decrease
-      value -= (1.0 - turnoutMultiplier) * 0.1;
-    }
-
-    value = clamp(value, 0.3, 0.7);
-
-    const impact = value > 0.55 ? 'positive' : value < 0.45 ? 'negative' : 'neutral';
-
-    let description = `${isNovember ? 'November' : 'Off-cycle'} election ${isPresidentialYear ? 'in presidential year' : ''}`;
-    if (turnoutMultiplier !== 1.0) {
-      description += ` with ${turnoutMultiplier > 1 ? 'high' : 'low'} turnout (${(turnoutMultiplier * 100).toFixed(0)}%)`;
-    }
-
-    return {
-      name: 'timing',
-      weight: this.weights.timing,
-      value,
-      impact,
-      description,
-    };
-  }
-
-  private calculateOppositionFactor(proposition: PropositionWithDetails): PredictionFactor {
-    const opponents = proposition.opponents || [];
-    const finance = proposition.finance;
-
-    let value = 0.5;
-
-    if (opponents.length === 0) {
-      value = 0.7;
-    } else if (opponents.length > 5) {
-      value = 0.35;
-    } else {
-      value = 0.5 - opponents.length * 0.03;
-    }
-
-    if (finance && finance.oppositionCommittees.length > 3) {
-      value -= 0.1;
-    }
-
-    value = clamp(value, 0.2, 0.8);
-
-    const impact = opponents.length <= 1 ? 'positive' : opponents.length >= 4 ? 'negative' : 'neutral';
-
-    return {
-      name: 'opposition',
-      weight: this.weights.opposition,
-      value,
-      impact,
-      description: `${opponents.length} organized opposition ${opponents.length === 1 ? 'group' : 'groups'}`,
-    };
-  }
-
-  private calculateConfidence(factors: PredictionFactor[], proposition: PropositionWithDetails): number {
-    let confidence = 0.4; // Start lower
-
-    // Check for factors with actual data (not "unavailable" in description)
-    const availableFactors = factors.filter((f) => !f.description.toLowerCase().includes('unavailable'));
-    confidence += availableFactors.length * 0.05; // 5% per available factor
-
-    // Bonus for having finance data with significant spending
-    if (proposition.finance) {
-      const totalSpending = proposition.finance.totalSupport + proposition.finance.totalOpposition;
-      if (totalSpending > 50_000_000) {
-        confidence += 0.15;
-      } else if (totalSpending > 10_000_000) {
-        confidence += 0.10;
-      } else if (totalSpending > 1_000_000) {
-        confidence += 0.05;
-      }
-    }
-
-    // Bonus for having demographic data
-    if (proposition.demographics) {
-      confidence += 0.05;
-    }
-
-    // Bonus for having ballot analysis
-    if (proposition.ballotAnalysis) {
-      confidence += 0.05;
-    }
-
-    // Historical propositions with results have higher confidence
-    if (proposition.result) {
-      confidence += 0.1;
-    }
-
-    return clamp(confidence, 0.3, 0.85);
-  }
-
+  /**
+   * Find historically similar propositions by category.
+   * Fetches real Ballotpedia election results for past years.
+   */
   private async findSimilarPropositions(
     proposition: PropositionWithDetails
   ): Promise<HistoricalComparison[]> {
-    const response = await apiClient.get<HistoricalComparison[]>(
-      `/propositions/${proposition.id}/similar`
-    );
-    return response.success ? response.data : [];
+    try {
+      const currentYear = new Date().getFullYear();
+      const yearsToSearch: number[] = [];
+
+      for (let y = currentYear; y >= currentYear - 10; y--) {
+        if (y !== proposition.year && (y % 2 === 0 || y >= currentYear - 1)) {
+          yearsToSearch.push(y);
+        }
+      }
+
+      // Fetch past propositions in parallel (limit to 4 years to stay fast)
+      const yearResults = await Promise.all(
+        yearsToSearch.slice(0, 4).map(y =>
+          caSosClient.getPropositionsByYear(y).catch(() => [])
+        )
+      );
+
+      const allProps = yearResults.flat();
+      const comparisons: HistoricalComparison[] = [];
+
+      for (const prop of allProps) {
+        if (!prop.result) continue;
+        if (prop.category !== proposition.category) continue;
+
+        const similarity = this.calculateSimilarity(proposition, prop);
+        if (similarity < 0.2) continue;
+
+        comparisons.push({
+          propositionId: prop.id,
+          propositionNumber: prop.number,
+          year: prop.year,
+          similarity,
+          result: prop.result.passed ? 'passed' : 'failed',
+          yesPercentage: prop.result.yesPercentage,
+        });
+      }
+
+      return comparisons
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 5);
+    } catch {
+      return [];
+    }
   }
+
+  private calculateSimilarity(target: Proposition, candidate: Proposition): number {
+    let score = 0;
+
+    if (target.category !== candidate.category) return 0;
+    score += 0.6;
+
+    const targetWords = this.extractKeywords(target.title);
+    const candidateWords = this.extractKeywords(candidate.title);
+    const overlap = targetWords.filter(w => candidateWords.includes(w)).length;
+    const maxPossible = Math.max(targetWords.length, candidateWords.length, 1);
+    score += (overlap / maxPossible) * 0.3;
+
+    const yearDiff = Math.abs(target.year - candidate.year);
+    score += Math.max(0, 0.1 - yearDiff * 0.02);
+
+    return Math.min(score, 1);
+  }
+
+  private extractKeywords(title: string): string[] {
+    const stopWords = new Set([
+      'a', 'an', 'the', 'and', 'or', 'but', 'for', 'to', 'of', 'in', 'on', 'at',
+      'by', 'from', 'with', 'as', 'is', 'was', 'are', 'be', 'been', 'being',
+      'that', 'this', 'it', 'its', 'not', 'no', 'all', 'any', 'each', 'which',
+    ]);
+    return title
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.has(w));
+  }
+
+  // ============ Scenario support ============
 
   async runScenario(
     proposition: PropositionWithDetails,
     scenario: Scenario
   ): Promise<ScenarioResults> {
-    const originalPrediction = await this.generatePrediction({ proposition });
+    const originalPrediction = await this.generatePrediction({
+      proposition,
+      includeHistorical: true,
+    });
 
     const modifiedProposition = this.applyScenarioParameters(proposition, scenario);
-    const scenarioPrediction = await this.generatePrediction({ proposition: modifiedProposition });
+    const scenarioPrediction = await this.generatePrediction({
+      proposition: modifiedProposition,
+      includeHistorical: true,
+    });
 
     const probabilityDelta = scenarioPrediction.passageProbability - originalPrediction.passageProbability;
 
@@ -358,14 +269,14 @@ class PredictionService {
       newProbability: scenarioPrediction.passageProbability,
       probabilityDelta,
       confidenceInterval: {
-        lower: scenarioPrediction.passageProbability - 0.1,
-        upper: scenarioPrediction.passageProbability + 0.1,
+        lower: clamp(scenarioPrediction.passageProbability - 0.1, 0, 1),
+        upper: clamp(scenarioPrediction.passageProbability + 0.1, 0, 1),
       },
       factorContributions: this.calculateFactorContributions(
         originalPrediction.factors,
         scenarioPrediction.factors
       ),
-      sensitivityAnalysis: this.runSensitivityAnalysis(proposition, scenario),
+      sensitivityAnalysis: [],
     };
   }
 
@@ -375,13 +286,12 @@ class PredictionService {
   ): PropositionWithDetails {
     const modified = { ...proposition };
 
-    // Apply funding changes
+    // Only apply funding changes — the one scenario parameter that maps to real data
     if (scenario.parameters.funding) {
-      // Create default finance data if not present
       const baseFinance = modified.finance || {
         propositionId: modified.id,
-        totalSupport: 1_000_000,  // Default $1M baseline
-        totalOpposition: 1_000_000,
+        totalSupport: 0,
+        totalOpposition: 0,
         supportCommittees: [],
         oppositionCommittees: [],
         topDonors: [],
@@ -395,49 +305,6 @@ class PredictionService {
       };
     }
 
-    // Apply turnout changes - affects demographic projections
-    if (scenario.parameters.turnout && scenario.parameters.turnout.overallMultiplier !== 1.0) {
-      // Store turnout multiplier for use in factor calculation
-      (modified as PropositionWithDetails & { turnoutMultiplier?: number }).turnoutMultiplier =
-        scenario.parameters.turnout.overallMultiplier;
-    }
-
-    // Apply framing changes - affects ballot wording analysis
-    if (scenario.parameters.framing) {
-      const currentAnalysis = modified.ballotAnalysis || {
-        propositionId: modified.id,
-        wordCount: 150,
-        readabilityScore: 50,
-        sentimentScore: 0,
-        complexity: 'moderate' as const,
-        keyPhrases: [],
-        comparisonToSimilar: {
-          avgWordCount: 150,
-          avgReadability: 50,
-        },
-      };
-
-      const newSentiment = currentAnalysis.sentimentScore + scenario.parameters.framing.titleSentiment;
-      let newReadability = currentAnalysis.readabilityScore;
-      let newComplexity: 'simple' | 'moderate' | 'complex' = currentAnalysis.complexity;
-
-      // Apply complexity changes
-      if (scenario.parameters.framing.summaryComplexity === 'simpler') {
-        newReadability = Math.min(100, currentAnalysis.readabilityScore + 20);
-        newComplexity = 'simple';
-      } else if (scenario.parameters.framing.summaryComplexity === 'complex') {
-        newReadability = Math.max(0, currentAnalysis.readabilityScore - 20);
-        newComplexity = 'complex';
-      }
-
-      modified.ballotAnalysis = {
-        ...currentAnalysis,
-        sentimentScore: clamp(newSentiment, -1, 1),
-        readabilityScore: newReadability,
-        complexity: newComplexity,
-      };
-    }
-
     return modified;
   }
 
@@ -445,30 +312,17 @@ class PredictionService {
     originalFactors: PredictionFactor[],
     newFactors: PredictionFactor[]
   ): { factor: string; originalImpact: number; adjustedImpact: number; contribution: number }[] {
-    return originalFactors.map((original, i) => {
-      const adjusted = newFactors[i];
+    // Match factors by name since factor lists may differ in length
+    return originalFactors.map((original) => {
+      const adjusted = newFactors.find(f => f.name === original.name);
+      const adjustedValue = adjusted ? adjusted.value : original.value;
       return {
         factor: original.name,
-        originalImpact: original.value * original.weight,
-        adjustedImpact: adjusted.value * adjusted.weight,
-        contribution: (adjusted.value - original.value) * original.weight,
+        originalImpact: original.value,
+        adjustedImpact: adjustedValue,
+        contribution: adjustedValue - original.value,
       };
     });
-  }
-
-  private runSensitivityAnalysis(
-    _proposition: PropositionWithDetails,
-    _scenario: Scenario
-  ): { parameter: string; value: number; probability: number }[] {
-    return [];
-  }
-
-  setWeights(weights: Partial<FactorWeights>): void {
-    this.weights = { ...this.weights, ...weights };
-  }
-
-  resetWeights(): void {
-    this.weights = DEFAULT_WEIGHTS;
   }
 }
 
