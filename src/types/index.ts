@@ -4,5 +4,4 @@
 
 export * from './proposition';
 export * from './scenario';
-export * from './district';
 export * from './api';

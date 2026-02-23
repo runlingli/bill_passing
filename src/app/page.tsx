@@ -3,12 +3,12 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/compo
 import {
   BarChart3,
   DollarSign,
-  Map,
   Zap,
   ArrowRight,
   ExternalLink,
   TrendingUp,
   Users,
+  Map,
 } from 'lucide-react';
 
 const features = [
@@ -36,14 +36,6 @@ const features = [
     href: '/scenarios',
     color: 'bg-blue-600',
   },
-  {
-    title: 'District Impact',
-    description:
-      'See how proposition passage affects partisan balance across California districts.',
-    icon: Map,
-    href: '/districts',
-    color: 'bg-red-600',
-  },
 ];
 
 
@@ -54,19 +46,14 @@ const dataSources = [
     url: 'https://cal-access.sos.ca.gov/',
   },
   {
-    name: 'Census ACS',
-    description: 'Demographic data',
-    url: 'https://www.census.gov/programs-surveys/acs.html',
-  },
-  {
     name: 'CA Secretary of State',
     description: 'Official election data',
     url: 'https://www.sos.ca.gov/elections/ballot-measures',
   },
   {
-    name: 'Google Civic Info',
-    description: 'District information',
-    url: 'https://developers.google.com/civic-information',
+    name: 'Ballotpedia',
+    description: 'Historical election results',
+    url: 'https://ballotpedia.org/',
   },
 ];
 
@@ -144,7 +131,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {features.map((feature) => (
               <Link key={feature.title} href={feature.href}>
                 <Card className="h-full hover:shadow-xl transition-shadow cursor-pointer bg-white border-2 border-gray-200">
@@ -213,7 +200,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {dataSources.map((source) => (
               <a
                 key={source.name}
