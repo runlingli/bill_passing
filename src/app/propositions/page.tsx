@@ -34,6 +34,12 @@ const FALLBACK_YEARS = ['2026', '2025', '2024', '2022', '2020', '2018', '2016'];
 const INITIAL_BATCH = 5;
 const BG_BATCH = 5;
 
+// Placeholder totals shown while data is loading (last known values)
+const PLACEHOLDER_TOTAL = 1247;
+const PLACEHOLDER_UPCOMING = 3;
+const PLACEHOLDER_PASSED = 707;
+const PLACEHOLDER_FAILED = 537;
+
 async function fetchYearPropositions(year: string): Promise<Proposition[]> {
   try {
     const res = await fetch(`/api/propositions?year=${year}&perPage=200`);
@@ -235,7 +241,7 @@ export default function PropositionsPage() {
                 <BarChart3 className="h-6 w-6 text-blue-900" />
               </div>
               <p className="text-3xl font-bold text-gray-900 text-center">
-                {isInitialLoading ? '-' : filteredPropositions.length}
+                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_TOTAL : filteredPropositions.length}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Total Propositions</p>
             </div>
@@ -244,7 +250,7 @@ export default function PropositionsPage() {
                 <TrendingUp className="h-6 w-6 text-blue-900" />
               </div>
               <p className="text-3xl font-bold text-blue-900 text-center">
-                {isInitialLoading ? '-' : upcomingCount}
+                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_UPCOMING : upcomingCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Upcoming</p>
             </div>
@@ -253,7 +259,7 @@ export default function PropositionsPage() {
                 <CheckCircle className="h-6 w-6 text-green-700" />
               </div>
               <p className="text-3xl font-bold text-green-700 text-center">
-                {isInitialLoading ? '-' : passedCount}
+                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_PASSED : passedCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Passed</p>
             </div>
@@ -262,7 +268,7 @@ export default function PropositionsPage() {
                 <XCircle className="h-6 w-6 text-red-700" />
               </div>
               <p className="text-3xl font-bold text-red-700 text-center">
-                {isInitialLoading ? '-' : failedCount}
+                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_FAILED : failedCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Failed</p>
             </div>
